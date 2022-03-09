@@ -2,35 +2,42 @@
 
 #include "raylib.h"
 
+#define MAX_BOXES 128
+#define MAX_ATTACHED 16
+
 typedef enum {
     Aluminum,
     Polycarb,
 } RobotMaterial;
 
 typedef struct {
-    float X;
-    float Y;
-    float Z;
+    Vector3 Translation;
+    float Angle; // degrees!
     // TODO: Normalize X and Y to the upper left of the entire part?
+    // (Float jank is very unlikely to happen in this project...)
 
     float Width;
     float Height;
     float Depth;
     float WallThickness; // 0 == solid
 
-    float Angle; // degrees!
-
     RobotMaterial Material;
     float HardcodedMass; // 0 == automatically calculate
 } Box;
 
-#define MAX_BOXES 128
 
 typedef struct {
+    Vector3 Origin;
+    Vector3 CenterOfMass;
+
+    Vector3 Translation;
+    float Angle;
+
     Box Boxes[MAX_BOXES];
     int NumBoxes;
 
-    Vector3 CenterOfMass;
+    struct Part *Attached[MAX_ATTACHED];
+    int NumAttached;
 } Part;
 
 float BoxMass(Box box);

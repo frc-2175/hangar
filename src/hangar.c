@@ -14,8 +14,11 @@
 
 #include "raylib.h"
 #include <emscripten/emscripten.h>
+#include <stdio.h>
 
 #include "cad.h"
+#include "rayext.h"
+#include "raydrag.h"
 
 //----------------------------------------------------------------------------------
 // Shared Variables Definition (global)
@@ -56,11 +59,11 @@ int main(void)
 Part testPart = {
     .Boxes = {
         {
-            .X = 300, .Y = 400,
+            .Translation = (Vector3){ 300, 400, 0 },
             .Width = 36, .Height = 2, .Depth = 1,
         },
         {
-            .X = 300, .Y = 200,
+            .Translation = (Vector3){ 300, 200, 0 },
             .Width = 18, .Height = 2, .Depth = 1,
             .Angle = 45,
         },
@@ -70,6 +73,28 @@ Part testPart = {
 
 #define IN2PX 16
 
+void DrawBox(Box box, Color color) {
+    Rectangle rec = (Rectangle){
+        box.Translation.x, box.Translation.y,
+        box.Width * IN2PX, box.Height * IN2PX,
+    };
+    Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
+    float angle = box.Angle;
+
+    DrawRectanglePro(rec, origin, angle, color);
+}
+
+bool CheckCollisionBox(Vector2 point, Box box) {
+    Rectangle rec = (Rectangle){
+        box.Translation.x, box.Translation.y,
+        box.Width * IN2PX, box.Height * IN2PX,
+    };
+    Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
+    float angle = box.Angle;
+
+    return CheckCollisionPointRecPro(point, rec, origin, angle);
+}
+
 //----------------------------------------------------------------------------------
 // Module specific Functions Definition
 //----------------------------------------------------------------------------------
@@ -78,6 +103,18 @@ static void UpdateDrawFrame(void)
 {
     // Update
     //----------------------------------------------------------------------------------
+    UpdateDrag();
+
+    for (int i = 0; i < testPart.NumBoxes; i++) {
+        Box *box = &testPart.Boxes[i];
+
+        TryToStartDrag(
+            box,
+            CheckCollisionBox(DragMouseStartPosition(), *box),
+            (Vector2){ box->Translation.x, box->Translation.y }
+        );
+    }
+
     UpdatePartCOM(&testPart);
     //----------------------------------------------------------------------------------
 
@@ -88,17 +125,16 @@ static void UpdateDrawFrame(void)
         ClearBackground(RAYWHITE);
 
         for (int i = 0; i < testPart.NumBoxes; i++) {
-            Box box = testPart.Boxes[i];
-            DrawRectanglePro(
-                (Rectangle){
-                    box.X, box.Y,
-                    box.Width * IN2PX, box.Height * IN2PX,
-                },
-                (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 },
-                box.Angle,
-                BLACK
-            );
-            DrawText(TextFormat("%.1f", BoxMass(box)), box.X, box.Y, 20, WHITE);
+            Box *box = &testPart.Boxes[i];
+
+            int dragState = DragState(box);
+            if (dragState) {
+                Vector2 newPos = DragObjectNewPosition();
+                box->Translation = (Vector3) { newPos.x, newPos.y, box->Translation.z };
+            }
+
+            DrawBox(*box, CheckCollisionBox(GetMousePosition(), *box) ? RED : BLACK);
+            DrawText(TextFormat("%.1f", BoxMass(*box)), box->Translation.x, box->Translation.y, 20, WHITE);
         }
 
         DrawCircle(testPart.CenterOfMass.x, testPart.CenterOfMass.y, 10, BLUE);

@@ -1,10 +1,7 @@
 #include "cad.h"
 
-// TODO: Surely there are math functions _somewhere_
-
-Vector3 AddVec3(Vector3 a, Vector3 b) {
-    return (Vector3){ a.x + b.x, a.y + b.y, a.z + b.z };
-}
+#include "raymath.h"
+#include "rayext.h"
 
 float BoxMass(Box box) {
     if (box.HardcodedMass) {
@@ -27,7 +24,7 @@ void UpdatePartCOM(Part *part) {
         float mass = BoxMass(box);
         float weight = mass / totalMass;
 
-        COM = AddVec3(COM, (Vector3){ box.X*weight, box.Y*weight, box.Z*weight });
+        COM = Vector3Add(COM, Vector3Scale(box.Translation, weight));
     }
 
     part->CenterOfMass = COM;
