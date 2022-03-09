@@ -113,6 +113,12 @@ static void UpdateDrawFrame(void)
             CheckCollisionBox(DragMouseStartPosition(), *box),
             (Vector2){ box->Translation.x, box->Translation.y }
         );
+
+        int dragState = DragState(box);
+        if (dragState) {
+            Vector2 newPos = DragObjectNewPosition();
+            box->Translation = (Vector3) { newPos.x, newPos.y, box->Translation.z };
+        }
     }
 
     UpdatePartCOM(&testPart);
@@ -126,12 +132,6 @@ static void UpdateDrawFrame(void)
 
         for (int i = 0; i < testPart.NumBoxes; i++) {
             Box *box = &testPart.Boxes[i];
-
-            int dragState = DragState(box);
-            if (dragState) {
-                Vector2 newPos = DragObjectNewPosition();
-                box->Translation = (Vector3) { newPos.x, newPos.y, box->Translation.z };
-            }
 
             DrawBox(*box, CheckCollisionBox(GetMousePosition(), *box) ? RED : BLACK);
             DrawText(TextFormat("%.1f", BoxMass(*box)), box->Translation.x, box->Translation.y, 20, WHITE);
