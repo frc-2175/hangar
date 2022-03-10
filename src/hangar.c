@@ -42,7 +42,7 @@ int main(void)
     // Initialization
     //---------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "Hangar");
-    emscripten_set_main_loop(UpdateDrawFrame, 10, 1);
+    emscripten_set_main_loop(UpdateDrawFrame, 20, 1);
 
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20); // TODO: y u no work
 
@@ -138,7 +138,6 @@ static void UpdateDrawFrame(void)
     //----------------------------------------------------------------------------------
     UpdateDrag();
 
-    bool boxSelectedThisFrame = false;
     for (int i = 0; i < testPart.NumBoxes; i++) {
         Box *box = &testPart.Boxes[i];
 
@@ -151,13 +150,11 @@ static void UpdateDrawFrame(void)
         );
         if (dragStarted) {
             selectedBox = box;
-            boxSelectedThisFrame = true;
         } else if (overBox
                 && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
                 && !IsBoxSelected(box)
         ) {
             selectedBox = box;
-            boxSelectedThisFrame = true;
         }
 
         // Handle dragging
@@ -166,12 +163,6 @@ static void UpdateDrawFrame(void)
             Vector2 newPos = DragObjectNewPosition();
             box->Translation = (Vector3) { newPos.x, newPos.y, box->Translation.z };
         }
-    }
-
-    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
-            && !boxSelectedThisFrame
-            && !(DragState(NULL) & (DRAG_DONE|DRAG_CANCELED))) {
-        selectedBox = NULL;
     }
 
     UpdatePartCOM(&testPart);
@@ -194,39 +185,41 @@ static void UpdateDrawFrame(void)
             DrawBox(*box, color);
             DrawMeasurementText(TextFormat("%.1f", BoxMass(*box)), (Vector2){ box->Translation.x, box->Translation.y }, box->Angle, WHITE);
 
-            RectanglePoints points = GetBoxPoints(*box);
-            Vector2 bottomMiddle = Vector2Lerp(points.BottomLeft, points.BottomRight, 0.5);
-            Vector2 rightMiddle = Vector2Lerp(points.TopRight, points.BottomRight, 0.5);
-            Vector2 recDown = Vector2Normalize(Vector2Subtract(points.BottomLeft, points.TopLeft));
-            Vector2 recRight = Vector2Normalize(Vector2Subtract(points.TopRight, points.TopLeft));
-            Vector2 widthTextPos = Vector2Add(bottomMiddle, Vector2Scale(recDown, 20));
-            Vector2 heightTextPos = Vector2Add(rightMiddle, Vector2Scale(recRight, 20));
-            DrawMeasurementText(TextFormat("%.1f\"", box->Width), widthTextPos, box->Angle, BLACK);
-            DrawMeasurementText(TextFormat("%.1f\"", box->Height), heightTextPos, box->Angle, BLACK);
+            if (IsBoxSelected(box)) {
+                RectanglePoints points = GetBoxPoints(*box);
+                Vector2 bottomMiddle = Vector2Lerp(points.BottomLeft, points.BottomRight, 0.5);
+                Vector2 rightMiddle = Vector2Lerp(points.TopRight, points.BottomRight, 0.5);
+                Vector2 recDown = Vector2Normalize(Vector2Subtract(points.BottomLeft, points.TopLeft));
+                Vector2 recRight = Vector2Normalize(Vector2Subtract(points.TopRight, points.TopLeft));
+                Vector2 widthTextPos = Vector2Add(bottomMiddle, Vector2Scale(recDown, 20));
+                Vector2 heightTextPos = Vector2Add(rightMiddle, Vector2Scale(recRight, 20));
+                DrawMeasurementText(TextFormat("%.1f\"", box->Width), widthTextPos, box->Angle, BLACK);
+                DrawMeasurementText(TextFormat("%.1f\"", box->Height), heightTextPos, box->Angle, BLACK);
 
-            switch (box->selectedField) {
-            case WidthField: {
-                if (MeasurementTextBox(widthTextPos, box)) {
-                    UpdateMeasurement(&box->Width, box->TextInputBuf);
-                    box->selectedField = 0;
+                switch (box->selectedField) {
+                case WidthField: {
+                    if (MeasurementTextBox(widthTextPos, box)) {
+                        UpdateMeasurement(&box->Width, box->TextInputBuf);
+                        box->selectedField = 0;
+                    }
+                } break;
+                case HeightField: {
+                    if (MeasurementTextBox(heightTextPos, box)) {
+                        UpdateMeasurement(&box->Height, box->TextInputBuf);
+                        box->selectedField = 0;
+                    }
+                } break;
                 }
-            } break;
-            case HeightField: {
-                if (MeasurementTextBox(heightTextPos, box)) {
-                    UpdateMeasurement(&box->Height, box->TextInputBuf);
-                    box->selectedField = 0;
-                }
-            } break;
-            }
 
-            int measurementClickRadius = 20;
-            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(GetMousePosition(), widthTextPos, measurementClickRadius)) {
-                box->selectedField = WidthField;
-                TextCopy(box->TextInputBuf, TextFormat("%.1f", box->Width));
-            }
-            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(GetMousePosition(), heightTextPos, measurementClickRadius)) {
-                box->selectedField = HeightField;
-                TextCopy(box->TextInputBuf, TextFormat("%.1f", box->Height));
+                int measurementClickRadius = 20;
+                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(GetMousePosition(), widthTextPos, measurementClickRadius)) {
+                    box->selectedField = WidthField;
+                    TextCopy(box->TextInputBuf, TextFormat("%.1f", box->Width));
+                }
+                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(GetMousePosition(), heightTextPos, measurementClickRadius)) {
+                    box->selectedField = HeightField;
+                    TextCopy(box->TextInputBuf, TextFormat("%.1f", box->Height));
+                }
             }
         }
 
