@@ -68,6 +68,17 @@ Box *selectedBox = NULL; // TODO: Multiple selected boxes
 
 #define IN2PX 16
 
+RectanglePoints GetBoxPoints(Box box) {
+    Rectangle rec = (Rectangle){
+        box.Translation.x, box.Translation.y,
+        box.Width * IN2PX, box.Height * IN2PX,
+    };
+    Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
+    float angle = box.Angle;
+
+    return GetRectanglePointsPro(rec, origin, angle);
+}
+
 void DrawBox(Box box, Color color) {
     Rectangle rec = (Rectangle){
         box.Translation.x, box.Translation.y,
@@ -90,15 +101,24 @@ bool CheckCollisionBox(Vector2 point, Box box) {
     return CheckCollisionPointRecPro(point, rec, origin, angle);
 }
 
-RectanglePoints GetBoxPoints(Box box) {
-    Rectangle rec = (Rectangle){
-        box.Translation.x, box.Translation.y,
-        box.Width * IN2PX, box.Height * IN2PX,
-    };
-    Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
-    float angle = box.Angle;
+Vector2 BoxRotHandlePos(Box box) {
+    RectanglePoints points = GetBoxPoints(box);
+    Vector2 rightMiddle = Vector2Lerp(points.TopRight, points.BottomRight, 0.5);
+    Vector2 recRight = Vector2Normalize(Vector2Subtract(points.TopRight, points.TopLeft));
+    return Vector2Add(rightMiddle, Vector2Scale(recRight, 40));
+}
 
-    return GetRectanglePointsPro(rec, origin, angle);
+bool CheckCollisionBoxRotHandle(Vector2 point, Box box) {
+    return CheckCollisionPointCircle(point, BoxRotHandlePos(box), 20);
+}
+
+void DrawBoxRotHandle(Box box) {
+    int radius = 35;
+    RectanglePoints points = GetBoxPoints(box);
+    Vector2 rightMiddle = Vector2Lerp(points.TopRight, points.BottomRight, 0.5);
+    Vector2 recRight = Vector2Normalize(Vector2Subtract(points.TopRight, points.TopLeft));
+    Vector2 center = Vector2Add(rightMiddle, Vector2Scale(recRight, 10));
+    DrawRing(center, radius, radius + 3, -box.Angle + 90 - 20, -box.Angle + 90 + 20, 16, BLACK);
 }
 
 bool IsBoxSelected(Box *box) {
@@ -143,13 +163,22 @@ static void UpdateDrawFrame(void)
 
         // Handle clicks / drag starts
         bool overBox = CheckCollisionBox(GetMousePosition(), *box);
-        bool dragStarted = TryToStartDrag(
+        bool translationDragStarted = TryToStartDrag(
             box,
             CheckCollisionBox(DragMouseStartPosition(), *box),
             (Vector2){ box->Translation.x, box->Translation.y }
         );
-        if (dragStarted) {
+        bool rotationDragStarted = TryToStartDrag(
+            box,
+            CheckCollisionBoxRotHandle(DragMouseStartPosition(), *box),
+            (Vector2){}
+        );
+        if (translationDragStarted) {
             selectedBox = box;
+            box->DragMode = Translating;
+        } else if (rotationDragStarted) {
+            selectedBox = box;
+            box->DragMode = Rotating;
         } else if (overBox
                 && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
                 && !IsBoxSelected(box)
@@ -158,10 +187,19 @@ static void UpdateDrawFrame(void)
         }
 
         // Handle dragging
-        int dragState = DragState(box);
-        if (dragState) {
-            Vector2 newPos = DragObjectNewPosition();
-            box->Translation = (Vector3) { newPos.x, newPos.y, box->Translation.z };
+        int dragging = DragState(box);
+        if (dragging) {
+            switch (box->DragMode) {
+            case Translating: {
+                Vector2 newPos = DragObjectNewPosition();
+                box->Translation = (Vector3) { newPos.x, newPos.y, box->Translation.z };
+            } break;
+            case Rotating: {
+                Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), (Vector2){ box->Translation.x, box->Translation.y });
+                float newAngle = atan2f(mouseOffset.y, mouseOffset.x) * RAD2DEG;
+                box->Angle = newAngle;
+            } break;
+            }
         }
     }
 
@@ -196,28 +234,30 @@ static void UpdateDrawFrame(void)
                 DrawMeasurementText(TextFormat("%.1f\"", box->Width), widthTextPos, box->Angle, BLACK);
                 DrawMeasurementText(TextFormat("%.1f\"", box->Height), heightTextPos, box->Angle, BLACK);
 
-                switch (box->selectedField) {
+                DrawBoxRotHandle(*box);
+
+                switch (box->SelectedField) {
                 case WidthField: {
                     if (MeasurementTextBox(widthTextPos, box)) {
                         UpdateMeasurement(&box->Width, box->TextInputBuf);
-                        box->selectedField = 0;
+                        box->SelectedField = 0;
                     }
                 } break;
                 case HeightField: {
                     if (MeasurementTextBox(heightTextPos, box)) {
                         UpdateMeasurement(&box->Height, box->TextInputBuf);
-                        box->selectedField = 0;
+                        box->SelectedField = 0;
                     }
                 } break;
                 }
 
                 int measurementClickRadius = 20;
                 if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(GetMousePosition(), widthTextPos, measurementClickRadius)) {
-                    box->selectedField = WidthField;
+                    box->SelectedField = WidthField;
                     TextCopy(box->TextInputBuf, TextFormat("%.1f", box->Width));
                 }
                 if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(GetMousePosition(), heightTextPos, measurementClickRadius)) {
-                    box->selectedField = HeightField;
+                    box->SelectedField = HeightField;
                     TextCopy(box->TextInputBuf, TextFormat("%.1f", box->Height));
                 }
             }

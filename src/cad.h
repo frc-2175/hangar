@@ -10,6 +10,11 @@ typedef enum {
     Polycarb,
 } RobotMaterial;
 
+typedef enum BoxDragMode {
+    Translating = 1,
+    Rotating,
+} BoxDragMode;
+
 typedef enum BoxUIField {
     WidthField = 1,
     HeightField,
@@ -32,7 +37,8 @@ typedef struct {
     float HardcodedMass; // 0 == automatically calculate
 
     // UI stuff weeeeee!
-    BoxUIField selectedField;
+    BoxDragMode DragMode;
+    BoxUIField SelectedField;
     char TextInputBuf[BOX_TEXT_INPUT_MAX];
 } Box;
 
