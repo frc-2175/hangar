@@ -10,6 +10,13 @@ typedef enum {
     Polycarb,
 } RobotMaterial;
 
+typedef enum BoxUIField {
+    WidthField = 1,
+    HeightField,
+} BoxUIField;
+
+#define BOX_TEXT_INPUT_MAX 64
+
 typedef struct {
     Vector3 Translation;
     float Angle; // degrees!
@@ -23,8 +30,11 @@ typedef struct {
 
     RobotMaterial Material;
     float HardcodedMass; // 0 == automatically calculate
-} Box;
 
+    // UI stuff weeeeee!
+    BoxUIField selectedField;
+    char TextInputBuf[BOX_TEXT_INPUT_MAX];
+} Box;
 
 typedef struct {
     Vector3 Origin;

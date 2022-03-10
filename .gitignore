@@ -51,5 +51,7 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+hangar.data
+hangar.html
 hangar.js
 hangar.wasm

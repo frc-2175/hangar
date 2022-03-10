@@ -52,7 +52,7 @@ USE_WAYLAND_DISPLAY   ?= FALSE
 
 # PLATFORM_WEB: Default properties
 BUILD_WEB_ASYNCIFY    ?= FALSE
-BUILD_WEB_SHELL       ?= minshell.html
+BUILD_WEB_SHELL       ?= shell.html
 BUILD_WEB_HEAP_SIZE   ?= 134217728
 BUILD_WEB_RESOURCES   ?= TRUE
 BUILD_WEB_RESOURCES_PATH  ?= resources
@@ -376,7 +376,8 @@ PROJECT_SOURCE_FILES ?= \
     hangar.c \
     cad.c \
     raydrag.c \
-    rayext.c
+    rayext.c \
+    raygui.c
     
 # Define all object files from source files
 OBJS = $(patsubst %.c, %.o, $(PROJECT_SOURCE_FILES))
