@@ -3,7 +3,6 @@
 #include "raylib.h"
 
 #define MAX_BOXES 128
-#define MAX_ATTACHED 16
 
 typedef enum {
     Aluminum,
@@ -43,17 +42,21 @@ typedef struct {
 } Box;
 
 typedef struct {
-    Vector3 Origin;
-    Vector3 CenterOfMass;
+    int Depth; // used to find children without doing annoying tree work
+    
+    Box Boxes[MAX_BOXES];
+    int NumBoxes;
 
     Vector3 Translation;
     float Angle;
 
-    Box Boxes[MAX_BOXES];
-    int NumBoxes;
+    Vector3 Origin;
+    Vector3 CenterOfMass;
 
-    struct Part *Attached[MAX_ATTACHED];
-    int NumAttached;
+    bool LockX;
+    bool LockY;
+    bool LockZ;
+    bool LockRotation;
 } Part;
 
 float BoxMass(Box box);

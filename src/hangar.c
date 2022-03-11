@@ -23,22 +23,53 @@
 #include "raygui.h"
 #include "raymath.h"
 
-//----------------------------------------------------------------------------------
-// Local Variables Definition (local to this module)
-//----------------------------------------------------------------------------------
 static const int screenWidth = 1200;
 static const int screenHeight = 900;
 
-//----------------------------------------------------------------------------------
-// Local Functions Declaration
-//----------------------------------------------------------------------------------
 static void UpdateDrawFrame(void);          // Update and draw one frame
+
+#define IN2PX 16
+#define MAX_PARTS 64
+Part parts[MAX_PARTS];
+int numParts;
+Part *selectedPart = NULL;
+Box *selectedBox = NULL; // TODO: Multiple selected boxes
 
 //----------------------------------------------------------------------------------
 // Main entry point
 //----------------------------------------------------------------------------------
 int main(void)
 {
+    parts[0] = (Part) {
+        .Boxes = {
+            {
+                .Translation = (Vector3){ 300, 400, 0 },
+                .Width = 36, .Height = 2, .Depth = 1,
+            },
+            {
+                .Translation = (Vector3){ 300, 200, 0 },
+                .Width = 18, .Height = 2, .Depth = 1,
+                .Angle = 45,
+            },
+        },
+        .NumBoxes = 2,
+    };
+    parts[1] = (Part) {
+        .Boxes = {
+            {
+                .Translation = (Vector3){ 600, 500, 0 },
+                .Width = 36, .Height = 2, .Depth = 1,
+            },
+            {
+                .Translation = (Vector3){ 600, 300, 0 },
+                .Width = 18, .Height = 2, .Depth = 1,
+                .Angle = -20,
+            },
+        },
+        .NumBoxes = 2,
+    };
+    numParts = 2;
+
     // Initialization
     //---------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "Hangar");
@@ -48,25 +79,6 @@ int main(void)
 
     return 0;
 }
-
-Part testPart = {
-    .Boxes = {
-        {
-            .Translation = (Vector3){ 300, 400, 0 },
-            .Width = 36, .Height = 2, .Depth = 1,
-        },
-        {
-            .Translation = (Vector3){ 300, 200, 0 },
-            .Width = 18, .Height = 2, .Depth = 1,
-            .Angle = 45,
-        },
-    },
-    .NumBoxes = 2,
-};
-
-Box *selectedBox = NULL; // TODO: Multiple selected boxes
-
-#define IN2PX 16
 
 RectanglePoints GetBoxPoints(Box box) {
     Rectangle rec = (Rectangle){
@@ -158,52 +170,61 @@ static void UpdateDrawFrame(void)
     //----------------------------------------------------------------------------------
     UpdateDrag();
 
-    for (int i = 0; i < testPart.NumBoxes; i++) {
-        Box *box = &testPart.Boxes[i];
+    for (int p = 0; p < numParts; p++) {
+        Part *part = &parts[p];
+        bool thisPartSelected = selectedPart == part;
 
-        // Handle clicks / drag starts
-        bool overBox = CheckCollisionBox(GetMousePosition(), *box);
-        bool translationDragStarted = TryToStartDrag(
-            box,
-            CheckCollisionBox(DragMouseStartPosition(), *box),
-            (Vector2){ box->Translation.x, box->Translation.y }
-        );
-        bool rotationDragStarted = TryToStartDrag(
-            box,
-            CheckCollisionBoxRotHandle(DragMouseStartPosition(), *box),
-            (Vector2){}
-        );
-        if (translationDragStarted) {
-            selectedBox = box;
-            box->DragMode = Translating;
-        } else if (rotationDragStarted) {
-            selectedBox = box;
-            box->DragMode = Rotating;
-        } else if (overBox
-                && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
-                && !IsBoxSelected(box)
-        ) {
-            selectedBox = box;
-        }
+        for (int i = 0; i < part->NumBoxes; i++) {
+            Box *box = &part->Boxes[i];
 
-        // Handle dragging
-        int dragging = DragState(box);
-        if (dragging) {
-            switch (box->DragMode) {
-            case Translating: {
-                Vector2 newPos = DragObjectNewPosition();
-                box->Translation = (Vector3) { newPos.x, newPos.y, box->Translation.z };
-            } break;
-            case Rotating: {
-                Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), (Vector2){ box->Translation.x, box->Translation.y });
-                float newAngle = atan2f(mouseOffset.y, mouseOffset.x) * RAD2DEG;
-                box->Angle = newAngle;
-            } break;
+            if (!thisPartSelected) {
+                // no updates unless this part is selected for editing
+                continue;
+            }
+
+            // Handle clicks / drag starts
+            bool overBox = CheckCollisionBox(GetMousePosition(), *box);
+            bool translationDragStarted = TryToStartDrag(
+                box,
+                CheckCollisionBox(DragMouseStartPosition(), *box),
+                (Vector2){ box->Translation.x, box->Translation.y }
+            );
+            bool rotationDragStarted = TryToStartDrag(
+                box,
+                CheckCollisionBoxRotHandle(DragMouseStartPosition(), *box),
+                (Vector2){}
+            );
+            if (translationDragStarted) {
+                selectedBox = box;
+                box->DragMode = Translating;
+            } else if (rotationDragStarted) {
+                selectedBox = box;
+                box->DragMode = Rotating;
+            } else if (overBox
+                    && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
+                    && !IsBoxSelected(box)
+            ) {
+                selectedBox = box;
+            }
+
+            // Handle dragging
+            int dragging = DragState(box);
+            if (dragging) {
+                switch (box->DragMode) {
+                case Translating: {
+                    Vector2 newPos = DragObjectNewPosition();
+                    box->Translation = (Vector3) { newPos.x, newPos.y, box->Translation.z };
+                } break;
+                case Rotating: {
+                    Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), (Vector2){ box->Translation.x, box->Translation.y });
+                    float newAngle = atan2f(mouseOffset.y, mouseOffset.x) * RAD2DEG;
+                    box->Angle = newAngle;
+                } break;
+                }
             }
         }
+        UpdatePartCOM(part);
     }
-
-    UpdatePartCOM(&testPart);
     //----------------------------------------------------------------------------------
 
     // Draw
@@ -212,58 +233,62 @@ static void UpdateDrawFrame(void)
     {
         ClearBackground(RAYWHITE);
 
-        for (int i = 0; i < testPart.NumBoxes; i++) {
-            Box *box = &testPart.Boxes[i];
+        for (int p = 0; p < numParts; p++) {
+            Part *part = &parts[p];
 
-            Color color = BLACK;
-            if (IsBoxSelected(box)) {
-                color = BLUE;
+            for (int i = 0; i < part->NumBoxes; i++) {
+                Box *box = &part->Boxes[i];
+
+                Color color = BLACK;
+                if (IsBoxSelected(box)) {
+                    color = BLUE;
+                }
+
+                DrawBox(*box, color);
+                DrawMeasurementText(TextFormat("%.1f", BoxMass(*box)), (Vector2){ box->Translation.x, box->Translation.y }, box->Angle, WHITE);
+
+                if (IsBoxSelected(box)) {
+                    RectanglePoints points = GetBoxPoints(*box);
+                    Vector2 bottomMiddle = Vector2Lerp(points.BottomLeft, points.BottomRight, 0.5);
+                    Vector2 rightMiddle = Vector2Lerp(points.TopRight, points.BottomRight, 0.5);
+                    Vector2 recDown = Vector2Normalize(Vector2Subtract(points.BottomLeft, points.TopLeft));
+                    Vector2 recRight = Vector2Normalize(Vector2Subtract(points.TopRight, points.TopLeft));
+                    Vector2 widthTextPos = Vector2Add(bottomMiddle, Vector2Scale(recDown, 20));
+                    Vector2 heightTextPos = Vector2Add(rightMiddle, Vector2Scale(recRight, 20));
+                    DrawMeasurementText(TextFormat("%.1f\"", box->Width), widthTextPos, box->Angle, BLACK);
+                    DrawMeasurementText(TextFormat("%.1f\"", box->Height), heightTextPos, box->Angle, BLACK);
+
+                    DrawBoxRotHandle(*box);
+
+                    switch (box->SelectedField) {
+                    case WidthField: {
+                        if (MeasurementTextBox(widthTextPos, box)) {
+                            UpdateMeasurement(&box->Width, box->TextInputBuf);
+                            box->SelectedField = 0;
+                        }
+                    } break;
+                    case HeightField: {
+                        if (MeasurementTextBox(heightTextPos, box)) {
+                            UpdateMeasurement(&box->Height, box->TextInputBuf);
+                            box->SelectedField = 0;
+                        }
+                    } break;
+                    }
+
+                    int measurementClickRadius = 20;
+                    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(GetMousePosition(), widthTextPos, measurementClickRadius)) {
+                        box->SelectedField = WidthField;
+                        TextCopy(box->TextInputBuf, TextFormat("%.1f", box->Width));
+                    }
+                    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(GetMousePosition(), heightTextPos, measurementClickRadius)) {
+                        box->SelectedField = HeightField;
+                        TextCopy(box->TextInputBuf, TextFormat("%.1f", box->Height));
+                    }
+                }
             }
 
-            DrawBox(*box, color);
-            DrawMeasurementText(TextFormat("%.1f", BoxMass(*box)), (Vector2){ box->Translation.x, box->Translation.y }, box->Angle, WHITE);
-
-            if (IsBoxSelected(box)) {
-                RectanglePoints points = GetBoxPoints(*box);
-                Vector2 bottomMiddle = Vector2Lerp(points.BottomLeft, points.BottomRight, 0.5);
-                Vector2 rightMiddle = Vector2Lerp(points.TopRight, points.BottomRight, 0.5);
-                Vector2 recDown = Vector2Normalize(Vector2Subtract(points.BottomLeft, points.TopLeft));
-                Vector2 recRight = Vector2Normalize(Vector2Subtract(points.TopRight, points.TopLeft));
-                Vector2 widthTextPos = Vector2Add(bottomMiddle, Vector2Scale(recDown, 20));
-                Vector2 heightTextPos = Vector2Add(rightMiddle, Vector2Scale(recRight, 20));
-                DrawMeasurementText(TextFormat("%.1f\"", box->Width), widthTextPos, box->Angle, BLACK);
-                DrawMeasurementText(TextFormat("%.1f\"", box->Height), heightTextPos, box->Angle, BLACK);
-
-                DrawBoxRotHandle(*box);
-
-                switch (box->SelectedField) {
-                case WidthField: {
-                    if (MeasurementTextBox(widthTextPos, box)) {
-                        UpdateMeasurement(&box->Width, box->TextInputBuf);
-                        box->SelectedField = 0;
-                    }
-                } break;
-                case HeightField: {
-                    if (MeasurementTextBox(heightTextPos, box)) {
-                        UpdateMeasurement(&box->Height, box->TextInputBuf);
-                        box->SelectedField = 0;
-                    }
-                } break;
-                }
-
-                int measurementClickRadius = 20;
-                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(GetMousePosition(), widthTextPos, measurementClickRadius)) {
-                    box->SelectedField = WidthField;
-                    TextCopy(box->TextInputBuf, TextFormat("%.1f", box->Width));
-                }
-                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && CheckCollisionPointCircle(GetMousePosition(), heightTextPos, measurementClickRadius)) {
-                    box->SelectedField = HeightField;
-                    TextCopy(box->TextInputBuf, TextFormat("%.1f", box->Height));
-                }
-            }
+            DrawCircle(part->CenterOfMass.x, part->CenterOfMass.y, 10, BLUE);
         }
-
-        DrawCircle(testPart.CenterOfMass.x, testPart.CenterOfMass.y, 10, BLUE);
 
         DrawFPS(10, 10);
     }
