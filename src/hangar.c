@@ -171,7 +171,11 @@ bool MeasurementTextBox(Vector2 pos, Box *box) {
 }
 
 Vector2 CenterOfRotationPos(Part *part) {
-    return Vector2Add(part->Position, part->CenterOfRotation);
+    return Part2World(*part, part->CenterOfRotation);
+}
+
+Vector2 AttachmentPointPos(Part *part) {
+    return Part2World(*part, part->AttachmentPoint);
 }
 
 void ClearSelected() {
@@ -205,7 +209,17 @@ static void UpdateDrawFrame(void)
                 CenterOfRotationPos(part)
             );
             if (DragState(&part->DraggingCenterOfRotation)) {
-                part->CenterOfRotation = Vector2Subtract(DragObjectNewPosition(), part->Position);
+                part->CenterOfRotation = World2Part(*part, DragObjectNewPosition());
+            }
+
+            // Edit attachment point
+            TryToStartDrag(
+                &part->DraggingAttachmentPoint,
+                CheckCollisionPointCircle(DragMouseStartPosition(), AttachmentPointPos(part), 30),
+                AttachmentPointPos(part)
+            );
+            if (DragState(&part->DraggingAttachmentPoint)) {
+                part->AttachmentPoint = World2Part(*part, DragObjectNewPosition());
             }
 
             // Edit boxes
@@ -342,8 +356,12 @@ static void UpdateDrawFrame(void)
                 }
             }
 
-            DrawCircleV(CenterOfRotationPos(part), 10, RED);
-            DrawCircle(part->CenterOfMass.x, part->CenterOfMass.y, 10, BLUE);
+            DrawCircleV(CenterOfRotationPos(part), 4, RED);
+            DrawRing(AttachmentPointPos(part), 9, 12, 0, 360, 36, GREEN);
+
+            if (editablePart == part) {
+                DrawCircle(part->CenterOfMass.x, part->CenterOfMass.y, 10, BLUE);
+            }
         }
 
         // Draw part lister
