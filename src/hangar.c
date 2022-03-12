@@ -28,11 +28,10 @@ static const int screenHeight = 900;
 
 static void UpdateDrawFrame(void);          // Update and draw one frame
 
-#define IN2PX 16
+#define IN2PX 12
 #define MAX_PARTS 64
 Part parts[MAX_PARTS];
 int numParts;
-Part *selectedPart = NULL;
 Part *editablePart = NULL;
 Box *selectedBox = NULL; // TODO: Multiple selected boxes
 
@@ -179,7 +178,6 @@ Vector2 AttachmentPointPos(Part *part) {
 }
 
 void ClearSelected() {
-    selectedPart = NULL;
     editablePart = NULL;
     selectedBox = NULL;
 }
@@ -198,7 +196,6 @@ static void UpdateDrawFrame(void)
         Part *part = &parts[p];
         UpdateReferences(part);
 
-        // bool thisPartSelected = selectedPart == part;
         bool thisPartEditable = editablePart == part;
 
         if (thisPartEditable) {
@@ -268,8 +265,16 @@ static void UpdateDrawFrame(void)
             }
         } else {
             // All clicks and drags move / rotate
-            if (!editablePart && selectedPart == part) {
-                TryToStartDrag(&part->DraggingPosition, true, part->Position);
+            if (!editablePart) {
+                bool dragOverAnyBox = false;
+                for (int b = 0; b < part->NumBoxes; b++) {
+                    Box box = part->Boxes[b];
+                    if (CheckCollisionBox(DragMouseStartPosition(), box)) {
+                        dragOverAnyBox = true;
+                    }
+                }
+
+                TryToStartDrag(&part->DraggingPosition, dragOverAnyBox, part->Position);
                 if (DragState(&part->DraggingPosition)) {
                     Vector2 startPosThisFrame = part->Position;
                     part->Position = DragObjectNewPosition();
@@ -432,15 +437,7 @@ static void UpdateDrawFrame(void)
                 x += 44;
 
                 x += 4;
-                DrawText(part->Name, x, y, 20, selectedPart == part ? BLUE : BLACK);
-                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
-                        && CheckCollisionPointRec(
-                            GetMousePosition(),
-                            (Rectangle){ x, y, MeasureText(part->Name, 20), 20 }
-                        )
-                ) {
-                    selectedPart = part;
-                }
+                DrawText(part->Name, x, y, 20, BLACK);
                 y += spacing;
             }
         }
