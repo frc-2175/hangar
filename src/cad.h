@@ -72,7 +72,6 @@ typedef struct Part {
     Vector2 Position;
     float Angle;
 
-    Vector2 CenterOfRotation;
     Vector2 AttachmentPoint;
     Vector2 CenterOfMass;
 
@@ -82,6 +81,7 @@ typedef struct Part {
     bool LockRotation;
 
     char DraggingPosition;
+    char DraggingRotation;
     char DraggingCenterOfRotation;
     char DraggingAttachmentPoint;
 } Part;

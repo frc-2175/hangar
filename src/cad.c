@@ -5,13 +5,11 @@
 #include "rayext.h"
 
 Vector2 World2Part(Part part, Vector2 v) {
-    return Vector2Subtract(v, part.Position);
-    // TODO: Rotation
+    return Vector2Rotate(Vector2Subtract(v, part.Position), -part.Angle * DEG2RAD);
 }
 
 Vector2 Part2World(Part part, Vector2 v) {
-    return Vector2Add(v, part.Position);
-    // TODO: Rotation
+    return Vector2Add(Vector2Rotate(v, part.Angle * DEG2RAD), part.Position);
 }
 
 float BoxMass(Box box) {

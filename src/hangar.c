@@ -139,7 +139,7 @@ void DrawBoxRotHandle(Box box) {
     Vector2 rightMiddle = Vector2Lerp(points.TopRight, points.BottomRight, 0.5);
     Vector2 recRight = Vector2Normalize(Vector2Subtract(points.TopRight, points.TopLeft));
     Vector2 center = Vector2Add(rightMiddle, Vector2Scale(recRight, 10));
-    DrawRing(center, radius, radius + 3, -box.Angle + 90 - 20, -box.Angle + 90 + 20, 16, BLACK);
+    DrawRing(center, radius, radius + 3, -box.Angle + 90 - 20, -box.Angle + 90 + 20, 16, DARKGRAY);
 }
 
 bool IsBoxSelected(Box *box) {
@@ -169,12 +169,28 @@ bool MeasurementTextBox(Vector2 pos, Box *box) {
     return GuiTextBox((Rectangle){ pos.x - width/2, pos.y - height/2, width, height }, box->TextInputBuf, BOX_TEXT_INPUT_MAX, true);
 }
 
-Vector2 CenterOfRotationPos(Part *part) {
-    return Part2World(*part, part->CenterOfRotation);
+Vector2 AttachmentPointPos(Part part) {
+    return Part2World(part, part.AttachmentPoint);
 }
 
-Vector2 AttachmentPointPos(Part *part) {
-    return Part2World(*part, part->AttachmentPoint);
+Vector2 PartRotHandlePos(Part part) {
+    Vector2 pos = part.Position;
+    float radius = 100;
+    return (Vector2) {
+        .x = pos.x + radius * cosf(part.Angle * DEG2RAD),
+        .y = pos.y + radius * sinf(part.Angle * DEG2RAD),
+    };
+}
+
+bool CheckCollisionPartRotHandle(Vector2 point, Part part) {
+    return CheckCollisionPointCircle(point, PartRotHandlePos(part), 20);
+}
+
+void DrawPartRotHandle(Part part) {
+    int radius = 50;
+    Vector2 partRight = (Vector2){ cosf(part.Angle * DEG2RAD), sinf(part.Angle * DEG2RAD) };
+    Vector2 center = Vector2Add(PartRotHandlePos(part), Vector2Scale(partRight, -50));
+    DrawRing(center, radius, radius + 3, -part.Angle + 90 - 20, -part.Angle + 90 + 20, 16, DARKGRAY);
 }
 
 void ClearSelected() {
@@ -202,18 +218,30 @@ static void UpdateDrawFrame(void)
             // Edit center of rotation
             TryToStartDrag(
                 &part->DraggingCenterOfRotation,
-                CheckCollisionPointCircle(DragMouseStartPosition(), CenterOfRotationPos(part), 30),
-                CenterOfRotationPos(part)
+                CheckCollisionPointCircle(DragMouseStartPosition(), part->Position, 30),
+                part->Position
             );
             if (DragState(&part->DraggingCenterOfRotation)) {
-                part->CenterOfRotation = World2Part(*part, DragObjectNewPosition());
+                Vector2 delta = Vector2Subtract(DragObjectNewPosition(), part->Position);
+                part->Position = Vector2Add(part->Position, delta);
+                for (int b = 0; b < part->NumBoxes; b++) {
+                    Box *box = &part->Boxes[b];
+                    Vector2 posWorld = Part2World(*part, box->Position);
+                    Vector2 newPosWorld = Vector2Subtract(posWorld, delta);
+                    box->Position = World2Part(*part, newPosWorld);
+                }
+                {
+                    Vector2 posWorld = Part2World(*part, part->AttachmentPoint);
+                    Vector2 newPosWorld = Vector2Subtract(posWorld, delta);
+                    part->AttachmentPoint = World2Part(*part, newPosWorld);
+                }
             }
 
             // Edit attachment point
             TryToStartDrag(
                 &part->DraggingAttachmentPoint,
-                CheckCollisionPointCircle(DragMouseStartPosition(), AttachmentPointPos(part), 30),
-                AttachmentPointPos(part)
+                CheckCollisionPointCircle(DragMouseStartPosition(), AttachmentPointPos(*part), 30),
+                AttachmentPointPos(*part)
             );
             if (DragState(&part->DraggingAttachmentPoint)) {
                 part->AttachmentPoint = World2Part(*part, DragObjectNewPosition());
@@ -266,6 +294,17 @@ static void UpdateDrawFrame(void)
         } else {
             // All clicks and drags move / rotate
             if (!editablePart) {
+                TryToStartDrag(
+                    &part->DraggingRotation,
+                    CheckCollisionPointCircle(DragMouseStartPosition(), PartRotHandlePos(*part), 20),
+                    (Vector2){}
+                );
+                if (DragState(&part->DraggingRotation)) {
+                    Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), part->Position);
+                    float newAngle = atan2f(mouseOffset.y, mouseOffset.x) * RAD2DEG;
+                    part->Angle = newAngle;
+                }
+
                 bool dragOverAnyBox = false;
                 for (int b = 0; b < part->NumBoxes; b++) {
                     Box box = part->Boxes[b];
@@ -273,7 +312,6 @@ static void UpdateDrawFrame(void)
                         dragOverAnyBox = true;
                     }
                 }
-
                 TryToStartDrag(&part->DraggingPosition, dragOverAnyBox, part->Position);
                 if (DragState(&part->DraggingPosition)) {
                     Vector2 startPosThisFrame = part->Position;
@@ -361,11 +399,15 @@ static void UpdateDrawFrame(void)
                 }
             }
 
-            DrawCircleV(CenterOfRotationPos(part), 4, RED);
-            DrawRing(AttachmentPointPos(part), 9, 12, 0, 360, 36, GREEN);
+            DrawCircleV(part->Position, 4, RED);
+            DrawRing(AttachmentPointPos(*part), 9, 12, 0, 360, 36, GREEN);
 
             if (editablePart == part) {
                 DrawCircle(part->CenterOfMass.x, part->CenterOfMass.y, 10, BLUE);
+            }
+
+            if (!editablePart) {
+                DrawPartRotHandle(*part);
             }
         }
 
