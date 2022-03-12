@@ -46,6 +46,8 @@ RectanglePoints GetRectanglePointsPro(Rectangle rec, Vector2 origin, float rotat
         .TopRight = topRight,
         .BottomLeft = bottomLeft,
         .BottomRight = bottomRight,
+
+        .Center = Vector2Lerp(topLeft, bottomRight, 0.5),
     };
 }
 
@@ -53,4 +55,12 @@ bool CheckCollisionPointRecPro(Vector2 point, Rectangle rec, Vector2 origin, flo
     RectanglePoints points = GetRectanglePointsPro(rec, origin, rotation);
     return CheckCollisionPointTriangle(point, points.TopLeft, points.BottomLeft, points.TopRight)
         || CheckCollisionPointTriangle(point, points.TopRight, points.BottomLeft, points.BottomRight);
+}
+
+Vector2 V3V2(Vector3 v) {
+    return (Vector2){ v.x, v.y };
+}
+
+Vector3 V2V3(Vector2 v, float z) {
+    return (Vector3){ v.x, v.y, z };
 }

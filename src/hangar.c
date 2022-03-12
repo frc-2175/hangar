@@ -88,8 +88,9 @@ int main(void)
 }
 
 RectanglePoints GetBoxPoints(Box box) {
+    Vector2 pos = V3V2(Part2World(*box.Part, box.Position));
     Rectangle rec = (Rectangle){
-        box.Position.x, box.Position.y,
+        pos.x, pos.y,
         box.Width * IN2PX, box.Height * IN2PX,
     };
     Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
@@ -99,17 +100,19 @@ RectanglePoints GetBoxPoints(Box box) {
 }
 
 void DrawBox(Box box, Color color) {
+    Vector2 pos = V3V2(Part2World(*box.Part, box.Position));
     Rectangle rec = (Rectangle){
-        box.Position.x, box.Position.y,
+        pos.x, pos.y,
         box.Width * IN2PX, box.Height * IN2PX,
     };
     Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
-    float angle = box.Angle;
+    float angle = box.Part->Angle + box.Angle;
 
     DrawRectanglePro(rec, origin, angle, color);
 }
 
 bool CheckCollisionBox(Vector2 point, Box box) {
+    point = V3V2(World2Part(*box.Part, V2V3(point, 0)));
     Rectangle rec = (Rectangle){
         box.Position.x, box.Position.y,
         box.Width * IN2PX, box.Height * IN2PX,
@@ -168,8 +171,7 @@ bool MeasurementTextBox(Vector2 pos, Box *box) {
 }
 
 Vector2 CenterOfRotationPos(Part *part) {
-    Vector3 res = Vector3Add(part->Position, part->CenterOfRotation);
-    return (Vector2){ res.x, res.y };
+    return V3V2(Vector3Add(part->Position, part->CenterOfRotation));
 }
 
 void ClearSelected() {
@@ -190,7 +192,9 @@ static void UpdateDrawFrame(void)
 
     for (int p = 0; p < numParts; p++) {
         Part *part = &parts[p];
-        bool thisPartSelected = selectedPart == part;
+        UpdateReferences(part);
+
+        // bool thisPartSelected = selectedPart == part;
         bool thisPartEditable = editablePart == part;
 
         if (thisPartEditable) {
@@ -244,10 +248,30 @@ static void UpdateDrawFrame(void)
                         box->Position = (Vector3) { newPos.x, newPos.y, box->Position.z };
                     } break;
                     case Rotating: {
-                        Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), (Vector2){ box->Position.x, box->Position.y });
+                        Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), GetBoxPoints(*box).Center);
                         float newAngle = atan2f(mouseOffset.y, mouseOffset.x) * RAD2DEG;
                         box->Angle = newAngle;
                     } break;
+                    }
+                }
+            }
+        } else {
+            // All clicks and drags move / rotate
+            if (!editablePart && selectedPart == part) {
+                TryToStartDrag(&part->DraggingPosition, true, V3V2(part->Position));
+                if (DragState(&part->DraggingPosition)) {
+                    Vector3 startPosThisFrame = part->Position;
+                    part->Position = V2V3(DragObjectNewPosition(), part->Position.z);
+
+                    for (int p2 = p + 1; p2 < numParts; p2++) {
+                        Part *part2 = &parts[p2];
+
+                        if (part2->Depth <= part->Depth) {
+                            break;
+                        }
+
+                        Vector3 offset = Vector3Subtract(part2->Position, startPosThisFrame);
+                        part2->Position = Vector3Add(part->Position, offset);
                     }
                 }
             }
@@ -277,11 +301,12 @@ static void UpdateDrawFrame(void)
                     color = BLUE;
                 }
 
+                RectanglePoints points = GetBoxPoints(*box);
                 DrawBox(*box, color);
-                DrawMeasurementText(TextFormat("%.1f", BoxMass(*box)), (Vector2){ box->Position.x, box->Position.y }, box->Angle, WHITE);
+                DrawMeasurementText(TextFormat("%.1f", BoxMass(*box)), points.Center, box->Angle, WHITE);
 
                 if (IsBoxSelected(box)) {
-                    RectanglePoints points = GetBoxPoints(*box);
+                    
                     Vector2 bottomMiddle = Vector2Lerp(points.BottomLeft, points.BottomRight, 0.5);
                     Vector2 rightMiddle = Vector2Lerp(points.TopRight, points.BottomRight, 0.5);
                     Vector2 recDown = Vector2Normalize(Vector2Subtract(points.BottomLeft, points.TopLeft));
@@ -320,7 +345,7 @@ static void UpdateDrawFrame(void)
                 }
             }
 
-            DrawCircle(part->CenterOfRotation.x, part->CenterOfRotation.y, 10, RED);
+            DrawCircleV(CenterOfRotationPos(part), 10, RED);
             DrawCircle(part->CenterOfMass.x, part->CenterOfMass.y, 10, BLUE);
         }
 
@@ -392,7 +417,15 @@ static void UpdateDrawFrame(void)
                 x += 44;
 
                 x += 4;
-                DrawText(part->Name, x, y, 20, BLACK);
+                DrawText(part->Name, x, y, 20, selectedPart == part ? BLUE : BLACK);
+                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
+                        && CheckCollisionPointRec(
+                            GetMousePosition(),
+                            (Rectangle){ x, y, MeasureText(part->Name, 20), 20 }
+                        )
+                ) {
+                    selectedPart = part;
+                }
                 y += spacing;
             }
         }
