@@ -23,8 +23,8 @@
 #include "raygui.h"
 #include "raymath.h"
 
-static const int screenWidth = 1200;
-static const int screenHeight = 900;
+static const int screenWidth = 1500;
+static const int screenHeight = 1100;
 
 static void UpdateDrawFrame(void);          // Update and draw one frame
 
@@ -33,7 +33,10 @@ static void UpdateDrawFrame(void);          // Update and draw one frame
 Part parts[MAX_PARTS];
 int numParts;
 Part *editablePart = NULL;
+Part *attachmentPart = NULL;
 Box *selectedBox = NULL; // TODO: Multiple selected boxes
+
+Vector2 rungPos = (Vector2){ 900, 100 };
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -47,32 +50,35 @@ int main(void)
         .Name = "Chassis",
         .Boxes = {
             {
-                .Position = (Vector2){ 300, 400 },
+                .Position = (Vector2){ 100, 0 },
                 .Width = 36, .Height = 2, .Depth = 1,
             },
             {
-                .Position = (Vector2){ 300, 200 },
-                .Width = 18, .Height = 2, .Depth = 1,
-                .Angle = 45,
+                .Position = (Vector2){ 100, -200 },
+                .Width = 48, .Height = 2, .Depth = 1,
+                .Angle = 90,
             },
         },
         .NumBoxes = 2,
+        .Position = (Vector2){ 200, 400 },
     };
     parts[1] = (Part) {
         .Name = "Mid Arm",
         .Boxes = {
             {
-                .Position = (Vector2){ 600, 500 },
+                .Position = (Vector2){ 200, 0 },
                 .Width = 36, .Height = 2, .Depth = 1,
             },
             {
-                .Position = (Vector2){ 600, 300 },
-                .Width = 18, .Height = 2, .Depth = 1,
-                .Angle = -20,
+                .Position = (Vector2){ 200, -200 },
+                .Width = 4, .Height = 2, .Depth = 1,
+                .Angle = 90,
             },
         },
         .NumBoxes = 2,
         .Depth = 1,
+        .Position = (Vector2){ 400, 500 },
+        .AttachmentPoint = (Vector2){ 100, 0 },
     };
     numParts = 2;
 
@@ -106,6 +112,27 @@ void DrawBox(Box box, Color color) {
     };
     Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
     float angle = box.Part->Angle + box.Angle;
+
+    DrawRectanglePro(rec, origin, angle, color);
+}
+
+void DrawBoxAttachment(Box box, Vector2 attachPos, Vector2 COM, Color color) {
+    Vector2 pos = Vector2Add(
+        World2Attachment(
+            attachPos, COM,
+            Part2World(*box.Part, box.Position)
+        ),
+        rungPos
+    );
+    Rectangle rec = (Rectangle){
+        pos.x, pos.y,
+        box.Width * IN2PX, box.Height * IN2PX,
+    };
+    Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
+    float angle = WorldAngle2AttachmentAngle(
+        attachPos, COM,
+        box.Part->Angle + box.Angle
+    );
 
     DrawRectanglePro(rec, origin, angle, color);
 }
@@ -292,7 +319,7 @@ static void UpdateDrawFrame(void)
                 }
             }
         } else {
-            // All clicks and drags move / rotate
+            // Part movement / rotation etc.
             if (!editablePart) {
                 TryToStartDrag(
                     &part->DraggingRotation,
@@ -327,6 +354,13 @@ static void UpdateDrawFrame(void)
                         Vector2 offset = Vector2Subtract(part2->Position, startPosThisFrame);
                         part2->Position = Vector2Add(part->Position, offset);
                     }
+                }
+
+                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
+                        && !(DragState(NULL) & (DRAG_DONE|DRAG_CANCELED))
+                        && CheckCollisionPointCircle(GetMousePosition(), Part2World(*part, part->AttachmentPoint), 10)
+                ) {
+                    attachmentPart = part;
                 }
             }
         }
@@ -487,6 +521,25 @@ static void UpdateDrawFrame(void)
         Vector2 overallCOM = ComputeCOM(parts, numParts);
         if (!editablePart) {
             DrawCircleV(overallCOM, 10, BLUE);
+        }
+
+        // Draw the attached stuff!!
+        if (attachmentPart) {
+            Vector2 attachPos = Part2World(*attachmentPart, attachmentPart->AttachmentPoint);
+            for (int p = 0; p < numParts; p++) {
+                Part *part = &parts[p];
+
+                for (int b = 0; b < part->NumBoxes; b++) {
+                    Box *box = &part->Boxes[b];
+
+                    DrawBoxAttachment(*box, attachPos, overallCOM, BLACK);
+                }
+            }
+
+            Vector2 COMAfterAttachment = Vector2Add(rungPos, World2Attachment(attachPos, overallCOM, overallCOM));
+
+            DrawCircleV(rungPos, 4, GREEN);
+            DrawCircleV(COMAfterAttachment, 10, PURPLE);
         }
     }
     EndDrawing();

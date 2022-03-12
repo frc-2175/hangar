@@ -88,6 +88,8 @@ typedef struct Part {
 
 Vector2 World2Part(Part part, Vector2 v);
 Vector2 Part2World(Part part, Vector2 v);
+Vector2 World2Attachment(Vector2 attachPos, Vector2 COM, Vector2 v);
+float WorldAngle2AttachmentAngle(Vector2 attachPos, Vector2 COM, float angle);
 
 float BoxMass(Box box);
 void UpdateReferences(Part *part);

@@ -12,6 +12,22 @@ Vector2 Part2World(Part part, Vector2 v) {
     return Vector2Add(Vector2Rotate(v, part.Angle * DEG2RAD), part.Position);
 }
 
+float attachmentCorrectionAngle(Vector2 attachPos, Vector2 COM) {
+    return PI + atan2f(
+        attachPos.x - COM.x,
+        attachPos.y - COM.y
+    );
+}
+
+Vector2 World2Attachment(Vector2 attachPos, Vector2 COM, Vector2 v) {
+    float angle = attachmentCorrectionAngle(attachPos, COM);
+    return Vector2Rotate(Vector2Subtract(v, attachPos), angle);
+}
+
+float WorldAngle2AttachmentAngle(Vector2 attachPos, Vector2 COM, float angle) {
+    return angle + attachmentCorrectionAngle(attachPos, COM) * RAD2DEG;
+}
+
 float BoxMass(Box box) {
     if (box.HardcodedMass) {
         return box.HardcodedMass;
