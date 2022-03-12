@@ -33,7 +33,11 @@ static void UpdateDrawFrame(void);          // Update and draw one frame
 Part parts[MAX_PARTS];
 int numParts;
 Part *selectedPart = NULL;
+Part *editablePart = NULL;
 Box *selectedBox = NULL; // TODO: Multiple selected boxes
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 //----------------------------------------------------------------------------------
 // Main entry point
@@ -41,13 +45,14 @@ Box *selectedBox = NULL; // TODO: Multiple selected boxes
 int main(void)
 {
     parts[0] = (Part) {
+        .Name = "Chassis",
         .Boxes = {
             {
-                .Translation = (Vector3){ 300, 400, 0 },
+                .Position = (Vector3){ 300, 400, 0 },
                 .Width = 36, .Height = 2, .Depth = 1,
             },
             {
-                .Translation = (Vector3){ 300, 200, 0 },
+                .Position = (Vector3){ 300, 200, 0 },
                 .Width = 18, .Height = 2, .Depth = 1,
                 .Angle = 45,
             },
@@ -55,25 +60,27 @@ int main(void)
         .NumBoxes = 2,
     };
     parts[1] = (Part) {
+        .Name = "Mid Arm",
         .Boxes = {
             {
-                .Translation = (Vector3){ 600, 500, 0 },
+                .Position = (Vector3){ 600, 500, 0 },
                 .Width = 36, .Height = 2, .Depth = 1,
             },
             {
-                .Translation = (Vector3){ 600, 300, 0 },
+                .Position = (Vector3){ 600, 300, 0 },
                 .Width = 18, .Height = 2, .Depth = 1,
                 .Angle = -20,
             },
         },
         .NumBoxes = 2,
+        .Depth = 1,
     };
     numParts = 2;
 
     // Initialization
     //---------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "Hangar");
-    emscripten_set_main_loop(UpdateDrawFrame, 20, 1);
+    emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
 
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20); // TODO: y u no work
 
@@ -82,7 +89,7 @@ int main(void)
 
 RectanglePoints GetBoxPoints(Box box) {
     Rectangle rec = (Rectangle){
-        box.Translation.x, box.Translation.y,
+        box.Position.x, box.Position.y,
         box.Width * IN2PX, box.Height * IN2PX,
     };
     Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
@@ -93,7 +100,7 @@ RectanglePoints GetBoxPoints(Box box) {
 
 void DrawBox(Box box, Color color) {
     Rectangle rec = (Rectangle){
-        box.Translation.x, box.Translation.y,
+        box.Position.x, box.Position.y,
         box.Width * IN2PX, box.Height * IN2PX,
     };
     Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
@@ -104,7 +111,7 @@ void DrawBox(Box box, Color color) {
 
 bool CheckCollisionBox(Vector2 point, Box box) {
     Rectangle rec = (Rectangle){
-        box.Translation.x, box.Translation.y,
+        box.Position.x, box.Position.y,
         box.Width * IN2PX, box.Height * IN2PX,
     };
     Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
@@ -160,6 +167,17 @@ bool MeasurementTextBox(Vector2 pos, Box *box) {
     return GuiTextBox((Rectangle){ pos.x - width/2, pos.y - height/2, width, height }, box->TextInputBuf, BOX_TEXT_INPUT_MAX, true);
 }
 
+Vector2 CenterOfRotationPos(Part *part) {
+    Vector3 res = Vector3Add(part->Position, part->CenterOfRotation);
+    return (Vector2){ res.x, res.y };
+}
+
+void ClearSelected() {
+    selectedPart = NULL;
+    editablePart = NULL;
+    selectedBox = NULL;
+}
+
 //----------------------------------------------------------------------------------
 // Module specific Functions Definition
 //----------------------------------------------------------------------------------
@@ -173,56 +191,68 @@ static void UpdateDrawFrame(void)
     for (int p = 0; p < numParts; p++) {
         Part *part = &parts[p];
         bool thisPartSelected = selectedPart == part;
+        bool thisPartEditable = editablePart == part;
 
-        for (int i = 0; i < part->NumBoxes; i++) {
-            Box *box = &part->Boxes[i];
-
-            if (!thisPartSelected) {
-                // no updates unless this part is selected for editing
-                continue;
+        if (thisPartEditable) {
+            // Edit center of rotation
+            TryToStartDrag(
+                &part->DraggingCenterOfRotation,
+                CheckCollisionPointCircle(DragMouseStartPosition(), CenterOfRotationPos(part), 30),
+                CenterOfRotationPos(part)
+            );
+            if (DragState(&part->DraggingCenterOfRotation)) {
+                Vector2 partPos = (Vector2){ part->Position.x, part->Position.y };
+                Vector2 cor2 = Vector2Subtract(DragObjectNewPosition(), partPos);
+                part->CenterOfRotation = (Vector3){ cor2.x, cor2.y, part->CenterOfRotation.z };
             }
 
-            // Handle clicks / drag starts
-            bool overBox = CheckCollisionBox(GetMousePosition(), *box);
-            bool translationDragStarted = TryToStartDrag(
-                box,
-                CheckCollisionBox(DragMouseStartPosition(), *box),
-                (Vector2){ box->Translation.x, box->Translation.y }
-            );
-            bool rotationDragStarted = TryToStartDrag(
-                box,
-                CheckCollisionBoxRotHandle(DragMouseStartPosition(), *box),
-                (Vector2){}
-            );
-            if (translationDragStarted) {
-                selectedBox = box;
-                box->DragMode = Translating;
-            } else if (rotationDragStarted) {
-                selectedBox = box;
-                box->DragMode = Rotating;
-            } else if (overBox
-                    && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
-                    && !IsBoxSelected(box)
-            ) {
-                selectedBox = box;
-            }
+            // Edit boxes
+            for (int i = 0; i < part->NumBoxes; i++) {
+                Box *box = &part->Boxes[i];
 
-            // Handle dragging
-            int dragging = DragState(box);
-            if (dragging) {
-                switch (box->DragMode) {
-                case Translating: {
-                    Vector2 newPos = DragObjectNewPosition();
-                    box->Translation = (Vector3) { newPos.x, newPos.y, box->Translation.z };
-                } break;
-                case Rotating: {
-                    Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), (Vector2){ box->Translation.x, box->Translation.y });
-                    float newAngle = atan2f(mouseOffset.y, mouseOffset.x) * RAD2DEG;
-                    box->Angle = newAngle;
-                } break;
+                // Handle clicks / drag starts
+                bool overBox = CheckCollisionBox(GetMousePosition(), *box);
+                bool translationDragStarted = TryToStartDrag(
+                    box,
+                    CheckCollisionBox(DragMouseStartPosition(), *box),
+                    (Vector2){ box->Position.x, box->Position.y }
+                );
+                bool rotationDragStarted = TryToStartDrag(
+                    box,
+                    CheckCollisionBoxRotHandle(DragMouseStartPosition(), *box),
+                    (Vector2){}
+                );
+                if (translationDragStarted) {
+                    selectedBox = box;
+                    box->DragMode = Translating;
+                } else if (rotationDragStarted) {
+                    selectedBox = box;
+                    box->DragMode = Rotating;
+                } else if (overBox
+                        && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
+                        && !IsBoxSelected(box)
+                ) {
+                    selectedBox = box;
+                }
+
+                // Handle dragging
+                int dragging = DragState(box);
+                if (dragging) {
+                    switch (box->DragMode) {
+                    case Translating: {
+                        Vector2 newPos = DragObjectNewPosition();
+                        box->Position = (Vector3) { newPos.x, newPos.y, box->Position.z };
+                    } break;
+                    case Rotating: {
+                        Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), (Vector2){ box->Position.x, box->Position.y });
+                        float newAngle = atan2f(mouseOffset.y, mouseOffset.x) * RAD2DEG;
+                        box->Angle = newAngle;
+                    } break;
+                    }
                 }
             }
         }
+        
         UpdatePartCOM(part);
     }
     //----------------------------------------------------------------------------------
@@ -240,12 +270,15 @@ static void UpdateDrawFrame(void)
                 Box *box = &part->Boxes[i];
 
                 Color color = BLACK;
+                if (editablePart && editablePart != part) {
+                    color = GRAY;
+                }
                 if (IsBoxSelected(box)) {
                     color = BLUE;
                 }
 
                 DrawBox(*box, color);
-                DrawMeasurementText(TextFormat("%.1f", BoxMass(*box)), (Vector2){ box->Translation.x, box->Translation.y }, box->Angle, WHITE);
+                DrawMeasurementText(TextFormat("%.1f", BoxMass(*box)), (Vector2){ box->Position.x, box->Position.y }, box->Angle, WHITE);
 
                 if (IsBoxSelected(box)) {
                     RectanglePoints points = GetBoxPoints(*box);
@@ -287,10 +320,82 @@ static void UpdateDrawFrame(void)
                 }
             }
 
+            DrawCircle(part->CenterOfRotation.x, part->CenterOfRotation.y, 10, RED);
             DrawCircle(part->CenterOfMass.x, part->CenterOfMass.y, 10, BLUE);
         }
 
-        DrawFPS(10, 10);
+        // Draw part lister
+        {
+            int x;
+            int y = 20;
+            const int spacing = 24;
+            const int depthPx = 28;
+
+            for (int p = 0; p < numParts; p++) {
+                Part *part = &parts[p];
+
+                x = 20;
+                x += depthPx * part->Depth;
+
+                // move down
+                if (GuiButton((Rectangle){ x, y, 19, 19 }, "")) {
+                    if (p < numParts-1) {
+                        Part tmp = parts[p + 1];
+                        parts[p + 1] = *part;
+                        parts[p] = tmp;
+                        ClearSelected();
+                    }
+                }
+                GuiDrawIcon(116 /* down arrow */, x + 2, y + 2, 1, BLACK);
+                x += 21;
+
+                // move up
+                if (GuiButton((Rectangle){ x, y, 19, 19 }, "")) {
+                    if (p > 0) {
+                        Part tmp = parts[p - 1];
+                        parts[p - 1] = *part;
+                        parts[p] = tmp;
+                        ClearSelected();
+                    }
+                }
+                GuiDrawIcon(117 /* up arrow */, x + 2, y + 2, 1, BLACK);
+                x += 21;
+
+                // make shallower
+                if (GuiButton((Rectangle){ x, y, 19, 19 }, "")) {
+                    part->Depth = MAX(part->Depth - 1, 0);
+                }
+                GuiDrawIcon(114 /* left arrow */, x + 2, y + 2, 1, BLACK);
+                x += 21;
+
+                // make deeper
+                if (GuiButton((Rectangle){ x, y, 19, 19 }, "")) {
+                    part->Depth = MAX(part->Depth + 1, 0);
+                }
+                GuiDrawIcon(115 /* right arrow */, x + 2, y + 2, 1, BLACK);
+                x += 21;
+
+                // spacer to edit button
+                x += 4;
+
+                int editableBefore = editablePart == part;
+                int editableAfter = GuiToggle((Rectangle){ x, y, 42, 19 }, "Editing", editablePart == part);
+                if (!editableBefore && editableAfter) {
+                    // just marked this one for editing
+                    ClearSelected();
+                    editablePart = part;
+                }
+                if (editableBefore && !editableAfter) {
+                    // stopped editing
+                    ClearSelected();
+                }
+                x += 44;
+
+                x += 4;
+                DrawText(part->Name, x, y, 20, BLACK);
+                y += spacing;
+            }
+        }
     }
     EndDrawing();
     //----------------------------------------------------------------------------------

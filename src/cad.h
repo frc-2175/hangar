@@ -2,6 +2,7 @@
 
 #include "raylib.h"
 
+#define PART_NAME_LENGTH 128
 #define MAX_BOXES 128
 
 typedef enum {
@@ -22,7 +23,7 @@ typedef enum BoxUIField {
 #define BOX_TEXT_INPUT_MAX 64
 
 typedef struct {
-    Vector3 Translation;
+    Vector3 Position;
     float Angle; // degrees!
     // TODO: Normalize X and Y to the upper left of the entire part?
     // (Float jank is very unlikely to happen in this project...)
@@ -44,19 +45,23 @@ typedef struct {
 typedef struct {
     int Depth; // used to find children without doing annoying tree work
     
+    char Name[PART_NAME_LENGTH];
+
     Box Boxes[MAX_BOXES];
     int NumBoxes;
 
-    Vector3 Translation;
+    Vector3 Position;
     float Angle;
 
-    Vector3 Origin;
+    Vector3 CenterOfRotation;
     Vector3 CenterOfMass;
 
     bool LockX;
     bool LockY;
     bool LockZ;
     bool LockRotation;
+
+    char DraggingCenterOfRotation;
 } Part;
 
 float BoxMass(Box box);

@@ -1,5 +1,6 @@
 #include "cad.h"
 
+#include <stdio.h>
 #include "raymath.h"
 #include "rayext.h"
 
@@ -24,7 +25,7 @@ void UpdatePartCOM(Part *part) {
         float mass = BoxMass(box);
         float weight = mass / totalMass;
 
-        COM = Vector3Add(COM, Vector3Scale(box.Translation, weight));
+        COM = Vector3Add(COM, Vector3Scale(box.Position, weight));
     }
 
     part->CenterOfMass = COM;
