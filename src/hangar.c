@@ -48,11 +48,11 @@ int main(void)
         .Name = "Chassis",
         .Boxes = {
             {
-                .Position = (Vector3){ 300, 400, 0 },
+                .Position = (Vector2){ 300, 400 },
                 .Width = 36, .Height = 2, .Depth = 1,
             },
             {
-                .Position = (Vector3){ 300, 200, 0 },
+                .Position = (Vector2){ 300, 200 },
                 .Width = 18, .Height = 2, .Depth = 1,
                 .Angle = 45,
             },
@@ -63,11 +63,11 @@ int main(void)
         .Name = "Mid Arm",
         .Boxes = {
             {
-                .Position = (Vector3){ 600, 500, 0 },
+                .Position = (Vector2){ 600, 500 },
                 .Width = 36, .Height = 2, .Depth = 1,
             },
             {
-                .Position = (Vector3){ 600, 300, 0 },
+                .Position = (Vector2){ 600, 300 },
                 .Width = 18, .Height = 2, .Depth = 1,
                 .Angle = -20,
             },
@@ -88,7 +88,7 @@ int main(void)
 }
 
 RectanglePoints GetBoxPoints(Box box) {
-    Vector2 pos = V3V2(Part2World(*box.Part, box.Position));
+    Vector2 pos = Part2World(*box.Part, box.Position);
     Rectangle rec = (Rectangle){
         pos.x, pos.y,
         box.Width * IN2PX, box.Height * IN2PX,
@@ -100,7 +100,7 @@ RectanglePoints GetBoxPoints(Box box) {
 }
 
 void DrawBox(Box box, Color color) {
-    Vector2 pos = V3V2(Part2World(*box.Part, box.Position));
+    Vector2 pos = Part2World(*box.Part, box.Position);
     Rectangle rec = (Rectangle){
         pos.x, pos.y,
         box.Width * IN2PX, box.Height * IN2PX,
@@ -112,7 +112,7 @@ void DrawBox(Box box, Color color) {
 }
 
 bool CheckCollisionBox(Vector2 point, Box box) {
-    point = V3V2(World2Part(*box.Part, V2V3(point, 0)));
+    point = World2Part(*box.Part, point);
     Rectangle rec = (Rectangle){
         box.Position.x, box.Position.y,
         box.Width * IN2PX, box.Height * IN2PX,
@@ -171,7 +171,7 @@ bool MeasurementTextBox(Vector2 pos, Box *box) {
 }
 
 Vector2 CenterOfRotationPos(Part *part) {
-    return V3V2(Vector3Add(part->Position, part->CenterOfRotation));
+    return Vector2Add(part->Position, part->CenterOfRotation);
 }
 
 void ClearSelected() {
@@ -205,9 +205,7 @@ static void UpdateDrawFrame(void)
                 CenterOfRotationPos(part)
             );
             if (DragState(&part->DraggingCenterOfRotation)) {
-                Vector2 partPos = (Vector2){ part->Position.x, part->Position.y };
-                Vector2 cor2 = Vector2Subtract(DragObjectNewPosition(), partPos);
-                part->CenterOfRotation = (Vector3){ cor2.x, cor2.y, part->CenterOfRotation.z };
+                part->CenterOfRotation = Vector2Subtract(DragObjectNewPosition(), part->Position);
             }
 
             // Edit boxes
@@ -244,8 +242,7 @@ static void UpdateDrawFrame(void)
                 if (dragging) {
                     switch (box->DragMode) {
                     case Translating: {
-                        Vector2 newPos = DragObjectNewPosition();
-                        box->Position = (Vector3) { newPos.x, newPos.y, box->Position.z };
+                        box->Position = DragObjectNewPosition();
                     } break;
                     case Rotating: {
                         Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), GetBoxPoints(*box).Center);
@@ -258,10 +255,10 @@ static void UpdateDrawFrame(void)
         } else {
             // All clicks and drags move / rotate
             if (!editablePart && selectedPart == part) {
-                TryToStartDrag(&part->DraggingPosition, true, V3V2(part->Position));
+                TryToStartDrag(&part->DraggingPosition, true, part->Position);
                 if (DragState(&part->DraggingPosition)) {
-                    Vector3 startPosThisFrame = part->Position;
-                    part->Position = V2V3(DragObjectNewPosition(), part->Position.z);
+                    Vector2 startPosThisFrame = part->Position;
+                    part->Position = DragObjectNewPosition();
 
                     for (int p2 = p + 1; p2 < numParts; p2++) {
                         Part *part2 = &parts[p2];
@@ -270,8 +267,8 @@ static void UpdateDrawFrame(void)
                             break;
                         }
 
-                        Vector3 offset = Vector3Subtract(part2->Position, startPosThisFrame);
-                        part2->Position = Vector3Add(part->Position, offset);
+                        Vector2 offset = Vector2Subtract(part2->Position, startPosThisFrame);
+                        part2->Position = Vector2Add(part->Position, offset);
                     }
                 }
             }

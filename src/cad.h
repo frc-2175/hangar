@@ -39,7 +39,7 @@ typedef enum BoxUIField {
  */
 
 typedef struct Box {
-    Vector3 Position;
+    Vector2 Position;
     float Angle; // degrees!
     // TODO: Normalize X and Y to the upper left of the entire part?
     // (Float jank is very unlikely to happen in this project...)
@@ -69,11 +69,11 @@ typedef struct Part {
     Box Boxes[MAX_BOXES];
     int NumBoxes;
 
-    Vector3 Position;
+    Vector2 Position;
     float Angle;
 
-    Vector3 CenterOfRotation;
-    Vector3 CenterOfMass;
+    Vector2 CenterOfRotation;
+    Vector2 CenterOfMass;
 
     bool LockX;
     bool LockY;
@@ -84,8 +84,8 @@ typedef struct Part {
     char DraggingCenterOfRotation;
 } Part;
 
-Vector3 World2Part(Part part, Vector3 v);
-Vector3 Part2World(Part part, Vector3 v);
+Vector2 World2Part(Part part, Vector2 v);
+Vector2 Part2World(Part part, Vector2 v);
 
 float BoxMass(Box box);
 void UpdateReferences(Part *part);

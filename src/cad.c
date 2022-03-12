@@ -4,13 +4,13 @@
 #include "raymath.h"
 #include "rayext.h"
 
-Vector3 World2Part(Part part, Vector3 v) {
-    return Vector3Subtract(v, part.Position);
+Vector2 World2Part(Part part, Vector2 v) {
+    return Vector2Subtract(v, part.Position);
     // TODO: Rotation
 }
 
-Vector3 Part2World(Part part, Vector3 v) {
-    return Vector3Add(v, part.Position);
+Vector2 Part2World(Part part, Vector2 v) {
+    return Vector2Add(v, part.Position);
     // TODO: Rotation
 }
 
@@ -36,15 +36,15 @@ void UpdatePartCOM(Part *part) {
         totalMass += BoxMass(box);
     }
 
-    Vector3 COM = {0};
+    Vector2 COM = {0};
     for (int i = 0; i < part->NumBoxes; i++) {
         Box box = part->Boxes[i];
         float mass = BoxMass(box);
         float weight = mass / totalMass;
 
-        Vector3 worldPos = Part2World(*part, box.Position);
+        Vector2 worldPos = Part2World(*part, box.Position);
 
-        COM = Vector3Add(COM, Vector3Scale(worldPos, weight));
+        COM = Vector2Add(COM, Vector2Scale(worldPos, weight));
     }
 
     part->CenterOfMass = COM;
