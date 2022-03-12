@@ -91,4 +91,5 @@ Vector2 Part2World(Part part, Vector2 v);
 
 float BoxMass(Box box);
 void UpdateReferences(Part *part);
+Vector2 ComputeCOM(Part *parts, int numParts);
 void UpdatePartCOM(Part *part);

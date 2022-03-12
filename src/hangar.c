@@ -444,6 +444,11 @@ static void UpdateDrawFrame(void)
                 y += spacing;
             }
         }
+
+        Vector2 overallCOM = ComputeCOM(parts, numParts);
+        if (!editablePart) {
+            DrawCircleV(overallCOM, 10, BLUE);
+        }
     }
     EndDrawing();
     //----------------------------------------------------------------------------------

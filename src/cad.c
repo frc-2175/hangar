@@ -29,23 +29,36 @@ void UpdateReferences(Part *part) {
     }
 }
 
-void UpdatePartCOM(Part *part) {
+Vector2 ComputeCOM(Part *parts, int numParts) {
     float totalMass = 0;
-    for (int i = 0; i < part->NumBoxes; i++) {
-        Box box = part->Boxes[i];
-        totalMass += BoxMass(box);
-    }
-
     Vector2 COM = {0};
-    for (int i = 0; i < part->NumBoxes; i++) {
-        Box box = part->Boxes[i];
-        float mass = BoxMass(box);
-        float weight = mass / totalMass;
 
-        Vector2 worldPos = Part2World(*part, box.Position);
+    for (int i = 0; i < numParts; i++) {
+        Part *part = &parts[i];
 
-        COM = Vector2Add(COM, Vector2Scale(worldPos, weight));
+        for (int i = 0; i < part->NumBoxes; i++) {
+            Box box = part->Boxes[i];
+            totalMass += BoxMass(box);
+        }
     }
 
-    part->CenterOfMass = COM;
+    for (int i = 0; i < numParts; i++) {
+        Part *part = &parts[i];
+
+        for (int i = 0; i < part->NumBoxes; i++) {
+            Box box = part->Boxes[i];
+            float mass = BoxMass(box);
+            float weight = mass / totalMass;
+
+            Vector2 worldPos = Part2World(*part, box.Position);
+
+            COM = Vector2Add(COM, Vector2Scale(worldPos, weight));
+        }
+    }
+
+    return COM;
+}
+
+void UpdatePartCOM(Part *part) {
+    part->CenterOfMass = ComputeCOM(part, 1);
 }
