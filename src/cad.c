@@ -12,6 +12,14 @@ Vector2 Part2World(Part part, Vector2 v) {
     return Vector2Add(Vector2Rotate(v, part.Angle * DEG2RAD), part.Position);
 }
 
+float WorldAngle2PartAngle(Part part, float angle) {
+    return angle - part.Angle;
+}
+
+float PartAngle2WorldAngle(Part part, float angle) {
+    return part.Angle + angle;
+}
+
 float attachmentCorrectionAngle(Vector2 attachPos, Vector2 COM) {
     return PI + atan2f(
         attachPos.x - COM.x,

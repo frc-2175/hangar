@@ -28,7 +28,7 @@ static const int screenHeight = 1100;
 
 static void UpdateDrawFrame(void);          // Update and draw one frame
 
-#define IN2PX 12
+#define IN2PX 8
 #define MAX_PARTS 64
 Part parts[MAX_PARTS];
 int numParts;
@@ -36,7 +36,20 @@ Part *editablePart = NULL;
 Part *attachmentPart = NULL;
 Box *selectedBox = NULL; // TODO: Multiple selected boxes
 
-Vector2 rungPos = (Vector2){ 900, 100 };
+int floorY = 800;
+int midRungX = 900;
+
+float rungSpacing = 2*12;
+float midRungHeightIn = (5*12 + 0.25) - (1.66/2);
+float highRungHeightIn = (6*12 + 3.625) - (1.66/2);
+float traversalRungHeightIn = (7*12 + 7) - (1.66/2);
+
+Vector2 midRungPos() {
+    return (Vector2) {
+        midRungX,
+        floorY - midRungHeightIn*IN2PX,
+    };
+}
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -92,6 +105,10 @@ int main(void)
     return 0;
 }
 
+float GetBoxAngle(Box box) {
+    return PartAngle2WorldAngle(*box.Part, box.Angle);
+}
+
 RectanglePoints GetBoxPoints(Box box) {
     Vector2 pos = Part2World(*box.Part, box.Position);
     Rectangle rec = (Rectangle){
@@ -99,7 +116,7 @@ RectanglePoints GetBoxPoints(Box box) {
         box.Width * IN2PX, box.Height * IN2PX,
     };
     Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
-    float angle = box.Angle;
+    float angle = GetBoxAngle(box);
 
     return GetRectanglePointsPro(rec, origin, angle);
 }
@@ -111,7 +128,7 @@ void DrawBox(Box box, Color color) {
         box.Width * IN2PX, box.Height * IN2PX,
     };
     Vector2 origin = (Vector2){ (box.Width*IN2PX)/2, (box.Height*IN2PX)/2 };
-    float angle = box.Part->Angle + box.Angle;
+    float angle = GetBoxAngle(box);
 
     DrawRectanglePro(rec, origin, angle, color);
 }
@@ -122,7 +139,7 @@ void DrawBoxAttachment(Box box, Vector2 attachPos, Vector2 COM, Color color) {
             attachPos, COM,
             Part2World(*box.Part, box.Position)
         ),
-        rungPos
+        midRungPos()
     );
     Rectangle rec = (Rectangle){
         pos.x, pos.y,
@@ -138,7 +155,7 @@ void DrawBoxAttachment(Box box, Vector2 attachPos, Vector2 COM, Color color) {
 }
 
 bool CheckCollisionBox(Vector2 point, Box box) {
-    point = World2Part(*box.Part, point);
+    point = World2Part(*box.Part, point); // oh it's checking collision in a different space?? wack
     Rectangle rec = (Rectangle){
         box.Position.x, box.Position.y,
         box.Width * IN2PX, box.Height * IN2PX,
@@ -166,7 +183,8 @@ void DrawBoxRotHandle(Box box) {
     Vector2 rightMiddle = Vector2Lerp(points.TopRight, points.BottomRight, 0.5);
     Vector2 recRight = Vector2Normalize(Vector2Subtract(points.TopRight, points.TopLeft));
     Vector2 center = Vector2Add(rightMiddle, Vector2Scale(recRight, 10));
-    DrawRing(center, radius, radius + 3, -box.Angle + 90 - 20, -box.Angle + 90 + 20, 16, DARKGRAY);
+    float angle = GetBoxAngle(box);
+    DrawRing(center, radius, radius + 3, -angle + 90 - 20, -angle + 90 + 20, 16, DARKGRAY);
 }
 
 bool IsBoxSelected(Box *box) {
@@ -280,22 +298,18 @@ static void UpdateDrawFrame(void)
 
                 // Handle clicks / drag starts
                 bool overBox = CheckCollisionBox(GetMousePosition(), *box);
-                bool translationDragStarted = TryToStartDrag(
-                    box,
+                bool positionDragStarted = TryToStartDrag(
+                    &box->DraggingPosition,
                     CheckCollisionBox(DragMouseStartPosition(), *box),
-                    (Vector2){ box->Position.x, box->Position.y }
+                    Part2World(*part, box->Position)
                 );
                 bool rotationDragStarted = TryToStartDrag(
-                    box,
+                    &box->DraggingRotation,
                     CheckCollisionBoxRotHandle(DragMouseStartPosition(), *box),
                     (Vector2){}
                 );
-                if (translationDragStarted) {
+                if (positionDragStarted || rotationDragStarted) {
                     selectedBox = box;
-                    box->DragMode = Translating;
-                } else if (rotationDragStarted) {
-                    selectedBox = box;
-                    box->DragMode = Rotating;
                 } else if (overBox
                         && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
                         && !IsBoxSelected(box)
@@ -304,18 +318,12 @@ static void UpdateDrawFrame(void)
                 }
 
                 // Handle dragging
-                int dragging = DragState(box);
-                if (dragging) {
-                    switch (box->DragMode) {
-                    case Translating: {
-                        box->Position = DragObjectNewPosition();
-                    } break;
-                    case Rotating: {
-                        Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), GetBoxPoints(*box).Center);
-                        float newAngle = atan2f(mouseOffset.y, mouseOffset.x) * RAD2DEG;
-                        box->Angle = newAngle;
-                    } break;
-                    }
+                if (DragState(&box->DraggingPosition)) {
+                    box->Position = World2Part(*part, DragObjectNewPosition());
+                } else if (DragState(&box->DraggingRotation)) {
+                    Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), GetBoxPoints(*box).Center);
+                    float newAngle = atan2f(mouseOffset.y, mouseOffset.x) * RAD2DEG;
+                    box->Angle = WorldAngle2PartAngle(*part, newAngle);
                 }
             }
         } else {
@@ -391,18 +399,17 @@ static void UpdateDrawFrame(void)
 
                 RectanglePoints points = GetBoxPoints(*box);
                 DrawBox(*box, color);
-                DrawMeasurementText(TextFormat("%.1f", BoxMass(*box)), points.Center, box->Angle, WHITE);
+                DrawMeasurementText(TextFormat("%.1f", BoxMass(*box)), points.Center, GetBoxAngle(*box), WHITE);
 
                 if (IsBoxSelected(box)) {
-                    
                     Vector2 bottomMiddle = Vector2Lerp(points.BottomLeft, points.BottomRight, 0.5);
                     Vector2 rightMiddle = Vector2Lerp(points.TopRight, points.BottomRight, 0.5);
                     Vector2 recDown = Vector2Normalize(Vector2Subtract(points.BottomLeft, points.TopLeft));
                     Vector2 recRight = Vector2Normalize(Vector2Subtract(points.TopRight, points.TopLeft));
                     Vector2 widthTextPos = Vector2Add(bottomMiddle, Vector2Scale(recDown, 20));
                     Vector2 heightTextPos = Vector2Add(rightMiddle, Vector2Scale(recRight, 20));
-                    DrawMeasurementText(TextFormat("%.1f\"", box->Width), widthTextPos, box->Angle, BLACK);
-                    DrawMeasurementText(TextFormat("%.1f\"", box->Height), heightTextPos, box->Angle, BLACK);
+                    DrawMeasurementText(TextFormat("%.1f\"", box->Width), widthTextPos, GetBoxAngle(*box), BLACK);
+                    DrawMeasurementText(TextFormat("%.1f\"", box->Height), heightTextPos, GetBoxAngle(*box), BLACK);
 
                     DrawBoxRotHandle(*box);
 
@@ -523,6 +530,21 @@ static void UpdateDrawFrame(void)
             DrawCircleV(overallCOM, 10, BLUE);
         }
 
+        // Draw the field
+        DrawLine(0, floorY, screenWidth, floorY, GRAY);
+        DrawCircleV((Vector2){
+            midRungX,
+            floorY - midRungHeightIn*IN2PX,
+        }, 1.66/2*IN2PX, GRAY);
+        DrawCircleV((Vector2){
+            midRungX - rungSpacing*IN2PX,
+            floorY - highRungHeightIn*IN2PX,
+        }, 1.66/2*IN2PX, GRAY);
+        DrawCircleV((Vector2){
+            midRungX - 2*rungSpacing*IN2PX,
+            floorY - traversalRungHeightIn*IN2PX,
+        }, 1.66/2*IN2PX, GRAY);
+
         // Draw the attached stuff!!
         if (attachmentPart) {
             Vector2 attachPos = Part2World(*attachmentPart, attachmentPart->AttachmentPoint);
@@ -536,9 +558,8 @@ static void UpdateDrawFrame(void)
                 }
             }
 
-            Vector2 COMAfterAttachment = Vector2Add(rungPos, World2Attachment(attachPos, overallCOM, overallCOM));
+            Vector2 COMAfterAttachment = Vector2Add(midRungPos(), World2Attachment(attachPos, overallCOM, overallCOM));
 
-            DrawCircleV(rungPos, 4, GREEN);
             DrawCircleV(COMAfterAttachment, 10, PURPLE);
         }
     }

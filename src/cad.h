@@ -10,11 +10,6 @@ typedef enum {
     Polycarb,
 } RobotMaterial;
 
-typedef enum BoxDragMode {
-    Translating = 1,
-    Rotating,
-} BoxDragMode;
-
 typedef enum BoxUIField {
     WidthField = 1,
     HeightField,
@@ -53,9 +48,10 @@ typedef struct Box {
     float HardcodedMass; // 0 == automatically calculate
 
     // UI stuff weeeeee!
-    BoxDragMode DragMode;
     BoxUIField SelectedField;
     char TextInputBuf[BOX_TEXT_INPUT_MAX];
+    char DraggingPosition;
+    char DraggingRotation;
 
     // o no
     struct Part *Part;
@@ -88,6 +84,8 @@ typedef struct Part {
 
 Vector2 World2Part(Part part, Vector2 v);
 Vector2 Part2World(Part part, Vector2 v);
+float WorldAngle2PartAngle(Part part, float angle);
+float PartAngle2WorldAngle(Part part, float angle);
 Vector2 World2Attachment(Vector2 attachPos, Vector2 COM, Vector2 v);
 float WorldAngle2AttachmentAngle(Vector2 attachPos, Vector2 COM, float angle);
 
