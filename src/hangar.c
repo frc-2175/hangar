@@ -337,7 +337,22 @@ static void UpdateDrawFrame(void)
                 if (DragState(&part->DraggingRotation)) {
                     Vector2 mouseOffset = Vector2Subtract(GetMousePosition(), part->Position);
                     float newAngle = atan2f(mouseOffset.y, mouseOffset.x) * RAD2DEG;
+                    float angleDelta = newAngle - part->Angle;
+
+                    // rotate this part (ez)
                     part->Angle = newAngle;
+
+                    // rotate child parts (less ez)
+                    for (int p2 = p + 1; p2 < numParts; p2++) {
+                        Part *part2 = &parts[p2];
+
+                        if (part2->Depth <= part->Depth) {
+                            break;
+                        }
+
+                        part2->Position = Vector2Add(Vector2Rotate(Vector2Subtract(part2->Position, part->Position), angleDelta * DEG2RAD), part->Position);
+                        part2->Angle += angleDelta;
+                    }
                 }
 
                 bool dragOverAnyBox = false;
