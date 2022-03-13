@@ -9,6 +9,11 @@ typedef struct RectanglePoints {
     Vector2 BottomLeft;
     Vector2 BottomRight;
 
+    Vector2 LeftMiddle;
+    Vector2 RightMiddle;
+    Vector2 TopMiddle;
+    Vector2 BottomMiddle;
+
     Vector2 Center;
 } RectanglePoints;
 

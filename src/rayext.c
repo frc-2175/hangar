@@ -47,6 +47,11 @@ RectanglePoints GetRectanglePointsPro(Rectangle rec, Vector2 origin, float rotat
         .BottomLeft = bottomLeft,
         .BottomRight = bottomRight,
 
+        .LeftMiddle = Vector2Lerp(topLeft, bottomLeft, 0.5),
+        .RightMiddle = Vector2Lerp(topRight, bottomRight, 0.5),
+        .TopMiddle = Vector2Lerp(topLeft, topRight, 0.5),
+        .BottomMiddle = Vector2Lerp(bottomLeft, bottomRight, 0.5),
+
         .Center = Vector2Lerp(topLeft, bottomRight, 0.5),
     };
 }

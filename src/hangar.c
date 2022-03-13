@@ -293,8 +293,8 @@ static void UpdateDrawFrame(void)
             }
 
             // Edit boxes
-            for (int i = 0; i < part->NumBoxes; i++) {
-                Box *box = &part->Boxes[i];
+            for (int b = 0; b < part->NumBoxes; b++) {
+                Box *box = &part->Boxes[b];
 
                 // Handle clicks / drag starts
                 bool overBox = CheckCollisionBox(GetMousePosition(), *box);
@@ -401,8 +401,8 @@ static void UpdateDrawFrame(void)
         for (int p = 0; p < numParts; p++) {
             Part *part = &parts[p];
 
-            for (int i = 0; i < part->NumBoxes; i++) {
-                Box *box = &part->Boxes[i];
+            for (int b = 0; b < part->NumBoxes; b++) {
+                Box *box = &part->Boxes[b];
 
                 Color color = BLACK;
                 if (editablePart && editablePart != part) {
@@ -417,12 +417,10 @@ static void UpdateDrawFrame(void)
                 DrawMeasurementText(TextFormat("%.1f", BoxMass(*box)), points.Center, GetBoxAngle(*box), WHITE);
 
                 if (IsBoxSelected(box)) {
-                    Vector2 bottomMiddle = Vector2Lerp(points.BottomLeft, points.BottomRight, 0.5);
-                    Vector2 rightMiddle = Vector2Lerp(points.TopRight, points.BottomRight, 0.5);
                     Vector2 recDown = Vector2Normalize(Vector2Subtract(points.BottomLeft, points.TopLeft));
                     Vector2 recRight = Vector2Normalize(Vector2Subtract(points.TopRight, points.TopLeft));
-                    Vector2 widthTextPos = Vector2Add(bottomMiddle, Vector2Scale(recDown, 20));
-                    Vector2 heightTextPos = Vector2Add(rightMiddle, Vector2Scale(recRight, 20));
+                    Vector2 widthTextPos = Vector2Add(points.BottomMiddle, Vector2Scale(recDown, 20));
+                    Vector2 heightTextPos = Vector2Add(points.RightMiddle, Vector2Scale(recRight, 20));
                     DrawMeasurementText(TextFormat("%.1f\"", box->Width), widthTextPos, GetBoxAngle(*box), BLACK);
                     DrawMeasurementText(TextFormat("%.1f\"", box->Height), heightTextPos, GetBoxAngle(*box), BLACK);
 
@@ -452,11 +450,26 @@ static void UpdateDrawFrame(void)
                         box->SelectedField = HeightField;
                         TextCopy(box->TextInputBuf, TextFormat("%.1f", box->Height));
                     }
+
+                    Vector2 deleteButtonPos = Vector2Add(
+                        Vector2Add(points.LeftMiddle, Vector2Scale(recRight, -20)),
+                        (Vector2){ -10, -10 }
+                    );
+                    if (GuiButton((Rectangle){ deleteButtonPos.x, deleteButtonPos.y, 20, 20 }, "")) {
+                        selectedBox = NULL;
+                        for (int b2 = b + 1; b2 < part->NumBoxes; b2++) {
+                            part->Boxes[b2-1] = part->Boxes[b2];
+                        }
+                        part->NumBoxes--;
+                    }
+                    GuiDrawIcon(128 /* cross */, deleteButtonPos.x + 2, deleteButtonPos.y + 2, 1, BLACK);
                 }
             }
 
-            DrawCircleV(part->Position, 4, RED);
-            DrawRing(AttachmentPointPos(*part), 9, 12, 0, 360, 36, GREEN);
+            if (!editablePart || editablePart == part) {
+                DrawCircleV(part->Position, 4, RED);
+                DrawRing(AttachmentPointPos(*part), 1.66/2*IN2PX - 3, 1.66/2*IN2PX, 0, 360, 36, GREEN);
+            }
 
             if (editablePart == part) {
                 DrawCircle(part->CenterOfMass.x, part->CenterOfMass.y, 10, BLUE);
@@ -464,6 +477,22 @@ static void UpdateDrawFrame(void)
 
             if (!editablePart) {
                 DrawPartRotHandle(*part);
+            }
+
+            if (editablePart == part) {
+                if (GuiButton((Rectangle){ GetScreenWidth() - 120, 20, 100, 20 }, "Add Box")) {
+                    part->Boxes[part->NumBoxes] = (Box){
+                        .Width = 24,
+                        .Height = 2,
+                        .Depth = 1,
+                        .Material = Aluminum,
+                        .Position = { 20 * part->NumBoxes, 20 * part->NumBoxes },
+                    };
+                    Box *newBox = &part->Boxes[part->NumBoxes];
+                    part->NumBoxes++;
+
+                    selectedBox = newBox;
+                }
             }
         }
 
@@ -538,6 +567,32 @@ static void UpdateDrawFrame(void)
                 DrawText(part->Name, x, y, 20, BLACK);
                 y += spacing;
             }
+
+            // add part
+            if (GuiButton((Rectangle){ 20, y, 100, 19 }, "Add Part")) {
+                if (numParts < MAX_PARTS) {
+                    parts[numParts] = (Part){
+                        .Position = { 400, 400 },
+                        .Name = "New Part",
+                        .Boxes = {
+                            {
+                                .Position = { 200, 0 },
+                                .Width = 36, .Height = 2, .Depth = 1,
+                            },
+                            {
+                                .Position = { 200, -200 },
+                                .Width = 4, .Height = 2, .Depth = 1,
+                                .Angle = 90,
+                            },
+                        },
+                        .NumBoxes = 2,
+                    };
+                    Part *newPart = &parts[numParts];
+                    numParts++;
+
+                    editablePart = newPart;
+                }
+            }
         }
 
         Vector2 overallCOM = ComputeCOM(parts, numParts);
@@ -569,7 +624,7 @@ static void UpdateDrawFrame(void)
                 for (int b = 0; b < part->NumBoxes; b++) {
                     Box *box = &part->Boxes[b];
 
-                    DrawBoxAttachment(*box, attachPos, overallCOM, BLACK);
+                    DrawBoxAttachment(*box, attachPos, overallCOM, editablePart ? GRAY : BLACK);
                 }
             }
 
