@@ -23,8 +23,8 @@
 #include "raygui.h"
 #include "raymath.h"
 
-static const int screenWidth = 1500;
-static const int screenHeight = 900;
+static const int screenWidth = 1300;
+static const int screenHeight = 810;
 
 static void UpdateDrawFrame(void);          // Update and draw one frame
 
@@ -63,13 +63,13 @@ int main(void)
         .Name = "Chassis",
         .Boxes = {
             {
-                .Position = (Vector2){ 100, 0 },
+                .Position = { 100, 0 },
                 .Width = 36, .Height = 2, .Depth = 1,
                 .WallThickness = 0.125,
                 .Quantity = 2,
             },
             {
-                .Position = (Vector2){ 100, -200 },
+                .Position = { 0, -200 },
                 .Angle = 90,
                 .Width = 48, .Height = 2, .Depth = 2,
                 .WallThickness = 0.125,
@@ -77,29 +77,29 @@ int main(void)
             },
         },
         .NumBoxes = 2,
-        .Position = (Vector2){ 200, 400 },
+        .Position = { 200, 700 },
     };
     parts[1] = (Part) {
         .Name = "Mid Arm",
         .Boxes = {
             {
-                .Position = (Vector2){ 200, 0 },
+                .Position = { 120, 0 },
                 .Width = 36, .Height = 1, .Depth = 1,
                 .WallThickness = 0.125,
                 .Quantity = 2,
             },
             {
-                .Position = (Vector2){ 200, -200 },
-                .Width = 4, .Height = 1, .Depth = 1,
+                .Position = { 260, 20 },
+                .Width = 4, .Height = 1, .Depth = 0.25,
                 .Angle = 90,
-                .Quantity = 2,
+                .Quantity = 4,
                 .Material = Polycarb,
             },
         },
         .NumBoxes = 2,
         .Depth = 1,
-        .Position = (Vector2){ 400, 500 },
-        .AttachmentPoint = (Vector2){ 100, 0 },
+        .Position = { 200, 450 },
+        .AttachmentPoint = { 250, 10 },
     };
     numParts = 2;
 
@@ -530,7 +530,7 @@ static void UpdateDrawFrame(void)
             }
 
             if (editablePart == part) {
-                DrawCircle(part->CenterOfMass.x, part->CenterOfMass.y, 10, BLUE);
+                DrawCircle(part->CenterOfMass.x, part->CenterOfMass.y, 10, PURPLE);
             }
 
             if (!editablePart) {
@@ -681,7 +681,7 @@ static void UpdateDrawFrame(void)
 
         Vector2 overallCOM = ComputeCOM(parts, numParts);
         if (!editablePart) {
-            DrawCircleV(overallCOM, 10, BLUE);
+            DrawCircleV(overallCOM, 10, PURPLE);
         }
 
         // Draw the field
