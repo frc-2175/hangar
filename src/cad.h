@@ -15,8 +15,6 @@ typedef enum {
 typedef enum BoxUIField {
     WidthField = 1,
     HeightField,
-
-    HardcodedMassField,
 } BoxUIField;
 
 typedef enum PartUIField {
@@ -51,10 +49,17 @@ typedef struct Box {
     float Height;
     float Depth;
     float WallThickness; // 0 == solid
+    GuiNumberTextBoxExState WidthTextBox;
+    GuiNumberTextBoxExState HeightTextBox;
+    GuiNumberTextBoxExState DepthTextBox;
+    GuiNumberTextBoxExState WallThicknessTextBox;
+
+    int Quantity;
+    GuiNumberTextBoxExState QuantityTextBox;
 
     RobotMaterial Material;
-    GuiDropdownBoxExState MaterialDropdown;
     float HardcodedMass; // 0 == automatically calculate
+    GuiDropdownBoxExState MaterialDropdown;
     GuiNumberTextBoxExState HardcodedMassTextBox;
 
     // UI stuff weeeeee!
@@ -102,5 +107,6 @@ float WorldAngle2AttachmentAngle(Vector2 attachPos, Vector2 COM, float angle);
 
 float BoxMass(Box box);
 void UpdateReferences(Part *part);
+float TotalMass(Part *parts, int numParts);
 Vector2 ComputeCOM(Part *parts, int numParts);
 void UpdatePartCOM(Part *part);

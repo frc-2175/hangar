@@ -32,5 +32,6 @@ typedef struct GuiDropdownBoxExState {
     int Active;
 } GuiDropdownBoxExState;
 
+void GuiIntTextBoxEx(GuiNumberTextBoxExState *state, Rectangle rec, int *numPtr);
 void GuiNumberTextBoxEx(GuiNumberTextBoxExState *state, Rectangle rec, float *numPtr);
 int GuiDropdownBoxEx(GuiDropdownBoxExState *state, Rectangle rec, const char* str);

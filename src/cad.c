@@ -38,10 +38,27 @@ float WorldAngle2AttachmentAngle(Vector2 attachPos, Vector2 COM, float angle) {
 
 float BoxMass(Box box) {
     if (box.HardcodedMass) {
-        return box.HardcodedMass;
-    } else {
-        return box.Width * box.Height * box.Depth;
+        return box.Quantity * box.HardcodedMass;
     }
+    
+    float volume = box.Width * box.Height * box.Depth;
+    if (box.WallThickness) {
+        volume -= box.Width * (box.Height - 2*box.WallThickness) * (box.Depth - 2*box.WallThickness);
+    }
+    float density = 0;
+    switch (box.Material) {
+    case Aluminum: {
+        density = 0.098f;
+    } break;
+    case Polycarb: {
+        density = 0.0491f;
+    } break;
+    case Steel: {
+        density = 0.2839f;
+    } break;
+    }
+
+    return box.Quantity * volume * density;
 }
 
 void UpdateReferences(Part *part) {
@@ -51,10 +68,9 @@ void UpdateReferences(Part *part) {
     }
 }
 
-Vector2 ComputeCOM(Part *parts, int numParts) {
+float TotalMass(Part *parts, int numParts) {
     float totalMass = 0;
-    Vector2 COM = {0};
-
+    
     for (int i = 0; i < numParts; i++) {
         Part *part = &parts[i];
 
@@ -64,6 +80,13 @@ Vector2 ComputeCOM(Part *parts, int numParts) {
         }
     }
 
+    return totalMass;
+}
+
+Vector2 ComputeCOM(Part *parts, int numParts) {
+    float totalMass = TotalMass(parts, numParts);
+
+    Vector2 COM = {0};
     for (int i = 0; i < numParts; i++) {
         Part *part = &parts[i];
 

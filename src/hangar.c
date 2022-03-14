@@ -24,7 +24,7 @@
 #include "raymath.h"
 
 static const int screenWidth = 1500;
-static const int screenHeight = 1100;
+static const int screenHeight = 900;
 
 static void UpdateDrawFrame(void);          // Update and draw one frame
 
@@ -37,7 +37,7 @@ Part *attachmentPart = NULL;
 Box *selectedBox = NULL; // TODO: Multiple selected boxes
 
 int floorY = 800;
-int midRungX = 900;
+int midRungX = 1000;
 
 float rungSpacing = 2*12;
 float midRungHeightIn = (5*12 + 0.25) - (1.66/2);
@@ -65,11 +65,15 @@ int main(void)
             {
                 .Position = (Vector2){ 100, 0 },
                 .Width = 36, .Height = 2, .Depth = 1,
+                .WallThickness = 0.125,
+                .Quantity = 2,
             },
             {
                 .Position = (Vector2){ 100, -200 },
-                .Width = 48, .Height = 2, .Depth = 1,
                 .Angle = 90,
+                .Width = 48, .Height = 2, .Depth = 2,
+                .WallThickness = 0.125,
+                .Quantity = 2,
             },
         },
         .NumBoxes = 2,
@@ -80,12 +84,16 @@ int main(void)
         .Boxes = {
             {
                 .Position = (Vector2){ 200, 0 },
-                .Width = 36, .Height = 2, .Depth = 1,
+                .Width = 36, .Height = 1, .Depth = 1,
+                .WallThickness = 0.125,
+                .Quantity = 2,
             },
             {
                 .Position = (Vector2){ 200, -200 },
-                .Width = 4, .Height = 2, .Depth = 1,
+                .Width = 4, .Height = 1, .Depth = 1,
                 .Angle = 90,
+                .Quantity = 2,
+                .Material = Polycarb,
             },
         },
         .NumBoxes = 2,
@@ -467,22 +475,17 @@ static void UpdateDrawFrame(void)
                     // Draw detail UI
                     {
                         /*
-                         * In order:
-                         * - Width, Height, Depth, Wall Thickness
-                         * - Material
-                         * - Mass Override
-                         * 
-                         * But, we draw this in reverse order, because raygui's
+                         * We draw this in reverse order, because raygui's
                          * dropdowns are _really good_
                          */
 
                         int x = 20;
-                        int y = screenHeight - 20 - 20;
-                        int fieldX = 220;
+                        int y = 20 + 24*(numParts + 1) + 20 + 24*5;
+                        int fieldX = 260;
 
                         // Mass override
-                        DrawText("Hardcoded Mass", x, y, 20, BLACK);
-                        GuiNumberTextBoxEx(&box->HardcodedMassTextBox, ((Rectangle){ fieldX, y, 100, 20 }), &box->HardcodedMass);
+                        DrawText("Hardcoded Mass (lbs)", x, y, 20, BLACK);
+                        GuiNumberTextBoxEx(&box->HardcodedMassTextBox, (Rectangle){ fieldX, y, 100, 20 }, &box->HardcodedMass);
                         y -= 24;
 
                         // Material
@@ -498,6 +501,25 @@ static void UpdateDrawFrame(void)
                             box->Material = Steel;
                         } break;
                         }
+                        y -= 24;
+
+                        // Quantity
+                        DrawText("Quantity", x, y, 20, BLACK);
+                        GuiIntTextBoxEx(&box->QuantityTextBox, (Rectangle){ fieldX, y, 100, 20 }, &box->Quantity);
+                        y -= 24;
+
+                        // Wall thickness
+                        DrawText("Wall Thickness (in)", x, y, 20, BLACK);
+                        GuiNumberTextBoxEx(&box->WallThicknessTextBox, (Rectangle){ fieldX, y, 100, 20 }, &box->WallThickness);
+                        y -= 24;
+
+                        // Width, height, depth
+                        DrawText("Dimensions (in)", x, y, 20, BLACK);
+                        int dimensionFieldWidth = 60;
+                        GuiNumberTextBoxEx(&box->WidthTextBox, (Rectangle){ fieldX, y, 60, 20 }, &box->Width);
+                        GuiNumberTextBoxEx(&box->HeightTextBox, (Rectangle){ fieldX + dimensionFieldWidth + 2, y, 60, 20 }, &box->Height);
+                        GuiNumberTextBoxEx(&box->DepthTextBox, (Rectangle){ fieldX + 2*(dimensionFieldWidth + 2), y, 60, 20 }, &box->Depth);
+                        y -= 24;
                     }
                 }
             }
@@ -521,6 +543,8 @@ static void UpdateDrawFrame(void)
                         .Width = 24,
                         .Height = 2,
                         .Depth = 1,
+                        .WallThickness = 0.25,
+                        .Quantity = 2,
                         .Material = Aluminum,
                         .Position = { 20 * part->NumBoxes, 20 * part->NumBoxes },
                     };
@@ -631,13 +655,10 @@ static void UpdateDrawFrame(void)
                         .Name = "New Part",
                         .Boxes = {
                             {
-                                .Position = { 200, 0 },
-                                .Width = 36, .Height = 2, .Depth = 1,
-                            },
-                            {
-                                .Position = { 200, -200 },
-                                .Width = 4, .Height = 2, .Depth = 1,
-                                .Angle = 90,
+                                .Width = 24, .Height = 2, .Depth = 1,
+                                .WallThickness = 0.25,
+                                .Quantity = 2,
+                                .Material = Aluminum,
                             },
                         },
                         .NumBoxes = 2,
@@ -650,6 +671,7 @@ static void UpdateDrawFrame(void)
             }
 
             if (partToDelete > -1) {
+                ClearSelected();
                 for (int p2 = partToDelete + 1; p2 < numParts; p2++) {
                     parts[p2-1] = parts[p2];
                 }
@@ -657,7 +679,6 @@ static void UpdateDrawFrame(void)
             }
         }
 
-        printf("%d\n", numParts);
         Vector2 overallCOM = ComputeCOM(parts, numParts);
         if (!editablePart) {
             DrawCircleV(overallCOM, 10, BLUE);
@@ -695,6 +716,13 @@ static void UpdateDrawFrame(void)
 
             DrawCircleV(COMAfterAttachment, 10, PURPLE);
         }
+
+        // Draw the total mass
+        DrawText(
+            TextFormat("Total weight: %.2f lbs", TotalMass(parts, numParts)),
+            20, screenHeight - 20 - 20,
+            20, BLACK
+        );
     }
     EndDrawing();
     //----------------------------------------------------------------------------------

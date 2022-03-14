@@ -64,9 +64,21 @@ bool CheckCollisionPointRecPro(Vector2 point, Rectangle rec, Vector2 origin, flo
         || CheckCollisionPointTriangle(point, points.TopRight, points.BottomLeft, points.BottomRight);
 }
 
+void GuiIntTextBoxEx(GuiNumberTextBoxExState *state, Rectangle rec, int *numPtr) {
+    if (!state->Active) {
+        TextCopy(state->Buf, TextFormat("%d", *numPtr));
+    }
+    if (GuiTextBox((rec), state->Buf, NUMBER_TEXT_BOX_BUF_LENGTH, state->Active)) {
+        state->Active = !state->Active;
+        if (!state->Active) {
+            *numPtr = (int)strtol(state->Buf, NULL, 10);
+        }
+    }
+}
+
 void GuiNumberTextBoxEx(GuiNumberTextBoxExState *state, Rectangle rec, float *numPtr) {
     if (!state->Active) {
-        TextCopy(state->Buf, TextFormat("%.1f", *numPtr));
+        TextCopy(state->Buf, TextFormat("%.2f", *numPtr));
     }
     if (GuiTextBox((rec), state->Buf, NUMBER_TEXT_BOX_BUF_LENGTH, state->Active)) {
         state->Active = !state->Active;
