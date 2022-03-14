@@ -102,6 +102,7 @@ int main(void)
         .AttachmentPoint = { 250, 10 },
     };
     numParts = 2;
+    attachmentPart = &parts[1];
 
     // Initialization
     //---------------------------------------------------------
