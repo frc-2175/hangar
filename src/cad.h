@@ -1,6 +1,7 @@
 #pragma once
 
 #include "raylib.h"
+#include "rayext.h"
 
 #define PART_NAME_LENGTH 128
 #define MAX_BOXES 128
@@ -8,11 +9,14 @@
 typedef enum {
     Aluminum,
     Polycarb,
+    Steel,
 } RobotMaterial;
 
 typedef enum BoxUIField {
     WidthField = 1,
     HeightField,
+
+    HardcodedMassField,
 } BoxUIField;
 
 typedef enum PartUIField {
@@ -49,7 +53,9 @@ typedef struct Box {
     float WallThickness; // 0 == solid
 
     RobotMaterial Material;
+    GuiDropdownBoxExState MaterialDropdown;
     float HardcodedMass; // 0 == automatically calculate
+    GuiNumberTextBoxExState HardcodedMassTextBox;
 
     // UI stuff weeeeee!
     BoxUIField SelectedField;

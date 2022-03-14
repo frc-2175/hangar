@@ -19,3 +19,18 @@ typedef struct RectanglePoints {
 
 RectanglePoints GetRectanglePointsPro(Rectangle rec, Vector2 origin, float rotation);
 bool CheckCollisionPointRecPro(Vector2 point, Rectangle rec, Vector2 origin, float rotation);
+
+#define NUMBER_TEXT_BOX_BUF_LENGTH 32
+
+typedef struct GuiNumberTextBoxExState {
+    bool Active;
+    char Buf[NUMBER_TEXT_BOX_BUF_LENGTH];
+} GuiNumberTextBoxExState;
+
+typedef struct GuiDropdownBoxExState {
+    bool Open;
+    int Active;
+} GuiDropdownBoxExState;
+
+void GuiNumberTextBoxEx(GuiNumberTextBoxExState *state, Rectangle rec, float *numPtr);
+int GuiDropdownBoxEx(GuiDropdownBoxExState *state, Rectangle rec, const char* str);

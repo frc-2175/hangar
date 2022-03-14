@@ -1,6 +1,8 @@
 #include "rayext.h"
 
 #include <math.h>
+#include <stdlib.h>
+#include "raygui.h"
 
 // Does the math of DrawRectanglePro but returns the points instead.
 RectanglePoints GetRectanglePointsPro(Rectangle rec, Vector2 origin, float rotation) {
@@ -60,4 +62,23 @@ bool CheckCollisionPointRecPro(Vector2 point, Rectangle rec, Vector2 origin, flo
     RectanglePoints points = GetRectanglePointsPro(rec, origin, rotation);
     return CheckCollisionPointTriangle(point, points.TopLeft, points.BottomLeft, points.TopRight)
         || CheckCollisionPointTriangle(point, points.TopRight, points.BottomLeft, points.BottomRight);
+}
+
+void GuiNumberTextBoxEx(GuiNumberTextBoxExState *state, Rectangle rec, float *numPtr) {
+    if (!state->Active) {
+        TextCopy(state->Buf, TextFormat("%.1f", *numPtr));
+    }
+    if (GuiTextBox((rec), state->Buf, NUMBER_TEXT_BOX_BUF_LENGTH, state->Active)) {
+        state->Active = !state->Active;
+        if (!state->Active) {
+            *numPtr = strtof(state->Buf, NULL);
+        }
+    }
+}
+
+int GuiDropdownBoxEx(GuiDropdownBoxExState *state, Rectangle rec, const char* str) {
+    if (GuiDropdownBox(rec, str, &state->Active, state->Open)) {
+        state->Open = !state->Open;
+    }
+    return state->Active;
 }

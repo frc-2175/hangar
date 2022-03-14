@@ -463,6 +463,42 @@ static void UpdateDrawFrame(void)
                         part->NumBoxes--;
                     }
                     GuiDrawIcon(128 /* cross */, deleteButtonPos.x + 2, deleteButtonPos.y + 2, 1, BLACK);
+
+                    // Draw detail UI
+                    {
+                        /*
+                         * In order:
+                         * - Width, Height, Depth, Wall Thickness
+                         * - Material
+                         * - Mass Override
+                         * 
+                         * But, we draw this in reverse order, because raygui's
+                         * dropdowns are _really good_
+                         */
+
+                        int x = 20;
+                        int y = screenHeight - 20 - 20;
+                        int fieldX = 220;
+
+                        // Mass override
+                        DrawText("Hardcoded Mass", x, y, 20, BLACK);
+                        GuiNumberTextBoxEx(&box->HardcodedMassTextBox, ((Rectangle){ fieldX, y, 100, 20 }), &box->HardcodedMass);
+                        y -= 24;
+
+                        // Material
+                        DrawText("Material", x, y, 20, BLACK);
+                        switch (GuiDropdownBoxEx(&box->MaterialDropdown, (Rectangle){ fieldX, y, 100, 20 }, "Aluminum;Polycarb;Steel")) {
+                        case 0: {
+                            box->Material = Aluminum;
+                        } break;
+                        case 1: {
+                            box->Material = Polycarb;
+                        } break;
+                        case 2: {
+                            box->Material = Steel;
+                        } break;
+                        }
+                    }
                 }
             }
 
