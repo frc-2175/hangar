@@ -572,7 +572,18 @@ static void UpdateDrawFrame(void)
                 x += 44;
 
                 x += 4;
-                DrawText(part->Name, x, y, 20, BLACK);
+                if (part->SelectedField == NameField) {
+                    if (GuiTextBox((Rectangle){ x, y, 200, 19 }, part->Name, PART_NAME_LENGTH, true)) {
+                        part->SelectedField = 0;
+                    }
+                } else {
+                    DrawText(part->Name, x, y, 20, BLACK);
+                    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)
+                            && CheckCollisionPointRec(GetMousePosition(), (Rectangle){ x, y, 200, 19 })
+                    ) {
+                        part->SelectedField = NameField;
+                    }
+                }
                 y += spacing;
             }
 
