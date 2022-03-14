@@ -15,6 +15,10 @@ typedef enum BoxUIField {
     HeightField,
 } BoxUIField;
 
+typedef enum PartUIField {
+    NameField = 1,
+} PartUIField;
+
 #define BOX_TEXT_INPUT_MAX 64
 
 /*
@@ -76,6 +80,7 @@ typedef struct Part {
     bool LockZ;
     bool LockRotation;
 
+    PartUIField SelectedField;
     char DraggingPosition;
     char DraggingRotation;
     char DraggingCenterOfRotation;

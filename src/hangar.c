@@ -503,10 +503,18 @@ static void UpdateDrawFrame(void)
             const int spacing = 24;
             const int depthPx = 28;
 
+            int partToDelete = -1;
+
             for (int p = 0; p < numParts; p++) {
                 Part *part = &parts[p];
 
                 x = 20;
+                if (GuiButton((Rectangle){ x, y, 19, 19 }, "")) {
+                    partToDelete = p;
+                }
+                GuiDrawIcon(128 /* cross */, x + 1, y + 2, 1, BLACK);
+
+                x = 50;
                 x += depthPx * part->Depth;
 
                 // move down
@@ -593,8 +601,16 @@ static void UpdateDrawFrame(void)
                     editablePart = newPart;
                 }
             }
+
+            if (partToDelete > -1) {
+                for (int p2 = partToDelete + 1; p2 < numParts; p2++) {
+                    parts[p2-1] = parts[p2];
+                }
+                numParts--;
+            }
         }
 
+        printf("%d\n", numParts);
         Vector2 overallCOM = ComputeCOM(parts, numParts);
         if (!editablePart) {
             DrawCircleV(overallCOM, 10, BLUE);
