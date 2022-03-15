@@ -741,7 +741,7 @@ static void UpdateDrawFrame(void)
     EndDrawing();
     //----------------------------------------------------------------------------------
 
-    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         ClearQuery();
     }
     SaveJSONWIP(Parts2JSON(parts, numParts));
