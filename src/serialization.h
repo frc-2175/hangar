@@ -3,4 +3,6 @@
 #include "cad.h"
 
 const char* Parts2JSON(Part *parts, int numParts);
-void SaveJSON(const char *jsonPtr);
+void SaveJSONWIP(const char *json);
+bool HasWIP();
+void LoadWIP(Part *parts, int *numParts);

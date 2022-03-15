@@ -105,6 +105,10 @@ int main(void)
     numParts = 2;
     attachmentPart = &parts[1];
 
+    if (HasWIP()) {
+        LoadWIP(parts, &numParts);
+    }
+
     // Initialization
     //---------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "Hangar");
@@ -729,5 +733,5 @@ static void UpdateDrawFrame(void)
     EndDrawing();
     //----------------------------------------------------------------------------------
 
-    SaveJSON(Parts2JSON(parts, numParts));
+    SaveJSONWIP(Parts2JSON(parts, numParts));
 }
