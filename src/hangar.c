@@ -22,11 +22,12 @@
 #include "raydrag.h"
 #include "raygui.h"
 #include "raymath.h"
+#include "serialization.h"
 
 static const int screenWidth = 1300;
 static const int screenHeight = 810;
 
-static void UpdateDrawFrame(void);          // Update and draw one frame
+static void UpdateDrawFrame(void);
 
 #define IN2PX 8
 #define MAX_PARTS 64
@@ -727,4 +728,6 @@ static void UpdateDrawFrame(void)
     }
     EndDrawing();
     //----------------------------------------------------------------------------------
+
+    SaveJSON(Parts2JSON(parts, numParts));
 }

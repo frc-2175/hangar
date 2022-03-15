@@ -377,7 +377,8 @@ PROJECT_SOURCE_FILES ?= \
     cad.c \
     raydrag.c \
     rayext.c \
-    raygui.c
+    raygui.c \
+    serialization.c
     
 # Define all object files from source files
 OBJS = $(patsubst %.c, %.o, $(PROJECT_SOURCE_FILES))
