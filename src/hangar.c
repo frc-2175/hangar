@@ -584,7 +584,7 @@ static void UpdateDrawFrame(void)
                         .Height = 2,
                         .Depth = 1,
                         .WallThickness = 0.25,
-                        .Quantity = 2,
+                        .Quantity = 1,
                         .Material = Aluminum,
                         .Position = { 20 * part->NumBoxes, 20 * part->NumBoxes },
                     };
