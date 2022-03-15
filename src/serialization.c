@@ -72,19 +72,6 @@ const char* Parts2JSON(Part *parts, int numParts) {
     return jsonBuf;
 }
 
-EM_JS(void, SaveJSONWIP, (const char *jsonPtr), {
-    const json = UTF8ToString(jsonPtr);
-    window.localStorage.setItem('saved', json);
-});
-
-EM_JS(bool, HasWIP, (), {
-    return window.localStorage.getItem('saved') !== null;
-});
-
-EM_JS(char *, getWIPJSON, (), {
-    return allocateUTF8(window.localStorage.getItem('saved'));
-});
-
 #define MAX_JSON_TOKENS 2048
 
 typedef struct JSONParser {
@@ -215,9 +202,52 @@ void loadJSON(const char *json, Part *parts, int *numParts) {
     }
 }
 
+EM_JS(void, SaveJSONWIP, (const char *jsonPtr), {
+    const json = UTF8ToString(jsonPtr);
+    window.localStorage.setItem('saved', json);
+});
+
+EM_JS(bool, HasWIP, (), {
+    return window.localStorage.getItem('saved') !== null;
+});
+
+EM_JS(char *, getWIPJSON, (), {
+    return allocateUTF8(window.localStorage.getItem('saved'));
+});
+
 void LoadWIP(Part *parts, int *numParts) {
     assert(HasWIP());
     char *json = getWIPJSON();
     loadJSON(json, parts, numParts);
     free(json);
 }
+
+EM_JS(void, ClearWIP, (), {
+    window.localStorage.removeItem('saved');
+});
+
+EM_JS(void, SaveJSONQuery, (const char *jsonPtr), {
+    const searchParams = new URLSearchParams(window.location.search);
+    searchParams.set('robot', btoa(UTF8ToString(jsonPtr)));
+    const path = window.location.pathname + '?' + searchParams.toString();
+    window.history.pushState(null, '', path);
+});
+
+EM_JS(bool, HasQuery, (), {
+    return new URLSearchParams(window.location.search).has('robot');
+});
+
+EM_JS(char *, getQueryJSON, (), {
+    return allocateUTF8(atob(new URLSearchParams(window.location.search).get('robot')));
+});
+
+void LoadQuery(Part *parts, int *numParts) {
+    assert(HasQuery());
+    char *json = getQueryJSON();
+    loadJSON(json, parts, numParts);
+    free(json);
+}
+
+EM_JS(void, ClearQuery, (), {
+    window.history.pushState(null, '', window.location.pathname);
+});

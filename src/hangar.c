@@ -105,7 +105,11 @@ int main(void)
     numParts = 2;
     attachmentPart = &parts[1];
 
-    if (HasWIP()) {
+    if (HasQuery()) {
+        LoadQuery(parts, &numParts);
+        ClearQuery();
+        ClearWIP();
+    } else if (HasWIP()) {
         LoadWIP(parts, &numParts);
     }
 
@@ -729,6 +733,10 @@ static void UpdateDrawFrame(void)
             20, screenHeight - 20 - 20,
             20, BLACK
         );
+
+        if (GuiButton((Rectangle){ screenWidth - 20 - 100, screenHeight - 20 - 20, 100, 20 }, "Share")) {
+            SaveJSONQuery(Parts2JSON(parts, numParts));
+        }
     }
     EndDrawing();
     //----------------------------------------------------------------------------------
