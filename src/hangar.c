@@ -261,6 +261,28 @@ void ClearSelected() {
     selectedBox = NULL;
 }
 
+bool didTabThisFrame = false;
+
+void TabTo(GuiNumberTextBoxExState *prev, GuiNumberTextBoxExState *curr, GuiNumberTextBoxExState *next) {
+    if (didTabThisFrame) {
+        return;
+    }
+
+    if (curr->Active) {
+        bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+        if (prev && shift && IsKeyPressed(KEY_TAB)) {
+            curr->Active = false;
+            prev->Active = true;
+            didTabThisFrame = true;
+        }
+        if (next && !shift && IsKeyPressed(KEY_TAB)) {
+            curr->Active = false;
+            next->Active = true;
+            didTabThisFrame = true;
+        }
+    }
+}
+
 //----------------------------------------------------------------------------------
 // Module specific Functions Definition
 //----------------------------------------------------------------------------------
@@ -270,6 +292,7 @@ static void UpdateDrawFrame(void)
     // Update
     //----------------------------------------------------------------------------------
     UpdateDrag();
+    didTabThisFrame = false;
 
     for (int p = 0; p < numParts; p++) {
         Part *part = &parts[p];
@@ -496,6 +519,7 @@ static void UpdateDrawFrame(void)
                         // Mass override
                         DrawText("Hardcoded Mass (lbs)", x, y, 20, BLACK);
                         GuiNumberTextBoxEx(&box->HardcodedMassTextBox, (Rectangle){ fieldX, y, 100, 20 }, &box->HardcodedMass);
+                        TabTo(&box->QuantityTextBox, &box->HardcodedMassTextBox, NULL);
                         y -= 24;
 
                         // Material
@@ -516,19 +540,25 @@ static void UpdateDrawFrame(void)
                         // Quantity
                         DrawText("Quantity", x, y, 20, BLACK);
                         GuiIntTextBoxEx(&box->QuantityTextBox, (Rectangle){ fieldX, y, 100, 20 }, &box->Quantity);
+                        TabTo(&box->WallThicknessTextBox, &box->QuantityTextBox, &box->HardcodedMassTextBox);
                         y -= 24;
 
                         // Wall thickness
                         DrawText("Wall Thickness (in)", x, y, 20, BLACK);
                         GuiNumberTextBoxEx(&box->WallThicknessTextBox, (Rectangle){ fieldX, y, 100, 20 }, &box->WallThickness);
+                        TabTo(&box->DepthTextBox, &box->WallThicknessTextBox, &box->QuantityTextBox);
                         y -= 24;
 
                         // Width, height, depth
                         DrawText("Dimensions (in)", x, y, 20, BLACK);
                         int dimensionFieldWidth = 60;
                         GuiNumberTextBoxEx(&box->WidthTextBox, (Rectangle){ fieldX, y, 60, 20 }, &box->Width);
+                        TabTo(NULL, &box->WidthTextBox, &box->HeightTextBox);
                         GuiNumberTextBoxEx(&box->HeightTextBox, (Rectangle){ fieldX + dimensionFieldWidth + 2, y, 60, 20 }, &box->Height);
+                        TabTo(&box->WidthTextBox, &box->HeightTextBox, &box->DepthTextBox);
                         GuiNumberTextBoxEx(&box->DepthTextBox, (Rectangle){ fieldX + 2*(dimensionFieldWidth + 2), y, 60, 20 }, &box->Depth);
+                        TabTo(&box->HeightTextBox, &box->DepthTextBox, &box->WallThicknessTextBox);
+
                         y -= 24;
                     }
                 }
@@ -667,7 +697,7 @@ static void UpdateDrawFrame(void)
                             {
                                 .Width = 24, .Height = 2, .Depth = 1,
                                 .WallThickness = 0.25,
-                                .Quantity = 2,
+                                .Quantity = 1,
                                 .Material = Aluminum,
                             },
                         },
