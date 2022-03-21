@@ -771,7 +771,7 @@ static void UpdateDrawFrame(void)
     EndDrawing();
     //----------------------------------------------------------------------------------
 
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && HasQuery()) {
         ClearQuery();
     }
     SaveWIP(Serialize(parts, numParts));
