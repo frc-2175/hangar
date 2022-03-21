@@ -1,60 +1,17 @@
------------------------------------
+# hangar
 
-_DISCLAIMER:_
+A tool for experimenting with robot climbs and hangs.
 
-Welcome to **raylib game template**!
+Written in C, using [raylib](https://www.raylib.com/). Built for the web using WebAssembly.
 
-This template provides a base structure to start developing a small raylib game in plain C. The repo is also pre-configured with a default `LICENSE` (zlib/libpng) and a `README.md` (this one) to be properly filled by users. Feel free to change the LICENSE as required.
+## Building
 
-All the sections defined by `$(Data to Fill)` are expected to be edited and filled properly. It's recommended to delete this disclaimer message after editing this `README.md` file.
+This project pretty much follows the [standard raylib WASM instructions](https://github.com/raysan5/raylib/wiki/Working-for-Web-(HTML5)). As those instructions indicate, you will need Emscripten. Follow the instructions in step 1 of the Raylib web instructions. **After installing and activating Emscripten, restart your computer.** Some environment variables are extremely stubborn.
 
-This template has been created to be used with raylib (www.raylib.com) and it's licensed under an unmodified zlib/libpng license.
+You should not need to compile raylib itself (`libraylib.a`) as long as you have Emscripten.
 
-_Copyright (c) 2014-2022 Ramon Santamaria ([@raysan5](https://twitter.com/raysan5))_
+You must `cd` into the `src` folder to build. The project can be build simply by running `make -e`. On Windows you may need to install [MinGW](https://osdn.net/projects/mingw/), and then run `mingw32-make -e`.
 
------------------------------------
+## Running
 
-## $(Game Title)
-
-![$(Game Title)](screenshots/screenshot000.png "$(Game Title)")
-
-### Description
-
-$(Your Game Description)
-
-### Features
-
- - $(Game Feature 01)
- - $(Game Feature 02)
- - $(Game Feature 03)
-
-### Controls
-
-Keyboard:
- - $(Game Control 01)
- - $(Game Control 02)
- - $(Game Control 03)
-
-### Screenshots
-
-_TODO: Show your game to the world, animated GIFs recommended!._
-
-### Developers
-
- - $(Developer 01) - $(Role/Tasks Developed)
- - $(Developer 02) - $(Role/Tasks Developed)
- - $(Developer 03) - $(Role/Tasks Developed)
-
-### Links
-
- - YouTube Gameplay: $(YouTube Link)
- - itch.io Release: $(itch.io Game Page)
- - Steam Release: $(Steam Game Page)
-
-### License
-
-This game sources are licensed under an unmodified zlib/libpng license, which is an OSI-certified, BSD-like license that allows static linking with closed source software. Check [LICENSE](LICENSE) for further details.
-
-$(Additional Licenses)
-
-*Copyright (c) $(Year) $(User Name) ($(User Twitter/GitHub Name))*
+In another terminal, cd into `src` and run `python -m http.server`. This will launch a web server on port 8000 or 8080. Visit http://localhost:8080/hangar.html to view the app (changing the port number if necessary).
