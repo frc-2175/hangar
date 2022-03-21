@@ -21,7 +21,7 @@
 #
 #**************************************************************************************************
 
-.PHONY: all clean
+.PHONY: all clean dist
 
 # Define required environment variables
 #------------------------------------------------------------------------------------------------
@@ -437,3 +437,25 @@ endif
 # endif
 	@echo Cleaning done
 
+# Bundle HTML files for distribution
+BUILD_ID := $(shell uuidgen | tr "[A-Z]" "[a-z]")
+dist:
+	@# UNASHAMEDLY FOR MAC
+	rm -rf dist
+	mkdir -p dist
+
+	cp hangar.html dist/index.html
+
+	cp base64.js dist/base64-$(BUILD_ID).js
+	sed -i "" "s/base64.js/base64-$(BUILD_ID).js/g" dist/index.html
+
+	cp hangar.js dist/hangar-$(BUILD_ID).js
+	sed -i '' "s/hangar.js/hangar-$(BUILD_ID).js/g" dist/index.html
+
+	cp hangar.data dist/hangar-$(BUILD_ID).data
+	sed -i '' "s/hangar.data/hangar-$(BUILD_ID).data/g" dist/index.html
+	sed -i '' "s/hangar.data/hangar-$(BUILD_ID).data/g" dist/hangar-$(BUILD_ID).js
+
+	cp hangar.wasm dist/hangar-$(BUILD_ID).wasm
+	sed -i '' "s/hangar.wasm/hangar-$(BUILD_ID).wasm/g" dist/index.html
+	sed -i '' "s/hangar.wasm/hangar-$(BUILD_ID).wasm/g" dist/hangar-$(BUILD_ID).js
