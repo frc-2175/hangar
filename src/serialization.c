@@ -303,7 +303,7 @@ void serialize_Part(serializer *s, Part *part) {
     ADD(Vector2, V_Initial, &part->AttachmentPoint);
 
     ADD(int, V_Initial, &part->NumBoxes);
-    printf("Part %s has %d boxes.\n", part->Name, part->NumBoxes);
+    // printf("%s: Part %s has %d boxes.\n", s->IsWriting ? "WRITING" : "READING", part->Name, part->NumBoxes);
     for (int b = 0; b < part->NumBoxes; b++) {
         serialize_Box(s, &part->Boxes[b]);
     }
@@ -311,7 +311,7 @@ void serialize_Part(serializer *s, Part *part) {
 
 void serialize_Parts(serializer *s, Part *parts, int *numParts) {
     ADD(int, V_Initial, numParts);
-    printf("There are %d parts.\n", *numParts);
+    // printf("%s: There are %d parts.\n", s->IsWriting ? "WRITING" : "READING", *numParts);
 
     for (int i = 0; i < *numParts; i++) {
         serialize_Part(s, &parts[i]);
@@ -390,6 +390,7 @@ EM_JS(char *, getWIPData, (), {
 
     // new binary format
     const wipDataArray = base64DecToArr(data);
+    console.log("Loaded this data from WIP:", wipDataArray);
     const buf = Module._malloc(wipDataArray.length * wipDataArray.BYTES_PER_ELEMENT);
     Module.HEAPU8.set(wipDataArray, buf);
     return buf;
@@ -422,15 +423,25 @@ EM_JS(bool, HasQuery, (), {
     return new URLSearchParams(window.location.search).has('robot');
 });
 
-EM_JS(char *, getQueryJSON, (), {
-    return allocateUTF8(atob(new URLSearchParams(window.location.search).get('robot')));
+EM_JS(char *, getQueryData, (), {
+    const data = new URLSearchParams(window.location.search).get('robot');
+    if (data[0] === 'e') {
+        // JSON stuff begins with an e in base64. While this is technically possible to get other ways...who cares.
+        return allocateUTF8(atob(new URLSearchParams(window.location.search).get('robot')));
+    }
+
+    const queryDataArray = base64DecToArr(data);
+    console.log("Loaded this data from the query:", queryDataArray);
+    const buf = Module._malloc(queryDataArray.length * queryDataArray.BYTES_PER_ELEMENT);
+    Module.HEAPU8.set(queryDataArray, buf);
+    return buf;
 });
 
 void LoadQuery(Part *parts, int *numParts) {
     assert(HasQuery());
-    char *json = getQueryJSON();
-    loadJSON(json, parts, numParts);
-    free(json);
+    char *data = getQueryData();
+    loadSerialized(data, parts, numParts);
+    free(data);
 }
 
 EM_JS(void, ClearQuery, (), {

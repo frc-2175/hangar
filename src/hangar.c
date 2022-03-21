@@ -106,10 +106,9 @@ int main(void)
     attachmentPart = &parts[1];
 
     if (HasQuery()) {
-        // TODO: Put this back
-        // LoadQuery(parts, &numParts);
-        // ClearQuery();
-        // ClearWIP();
+        LoadQuery(parts, &numParts);
+        ClearQuery();
+        ClearWIP();
     } else if (HasWIP()) {
         LoadWIP(parts, &numParts);
     }
