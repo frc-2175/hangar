@@ -1,6 +1,11 @@
 {
     "files.associations": {
         "raymath.h": "c",
-        "*.m": "c"
+        "*.m": "c",
+        "__locale": "c",
+        "__string": "c",
+        "string": "c",
+        "string_view": "c",
+        "sstream": "c"
     }
 }

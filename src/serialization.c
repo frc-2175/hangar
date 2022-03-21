@@ -7,17 +7,23 @@
 #include <stdio.h>
 #include "jsmn.h"
 
-#define JSON_MAX_LENGTH 999999 // I sure hope we stay under this aaaa
+#define SERIALIZED_MAX_LENGTH 999999 // I sure hope we stay under this aaaa
 
-char jsonBuf[JSON_MAX_LENGTH+1];
+char serializeBuf[SERIALIZED_MAX_LENGTH+1];
 
 const char* v2(Vector2 v) {
     return TextFormat("[%f,%f]", v.x, v.y);
 }
 
-void write(int *c, const char* str) {
-    assert(*c < JSON_MAX_LENGTH);
-    *c += TextCopy(&jsonBuf[*c], str);
+void write(int *c, const char *str) {
+    assert(*c < SERIALIZED_MAX_LENGTH);
+    *c += TextCopy(&serializeBuf[*c], str);
+}
+
+void writeN(int *c, void *str, int n) {
+    assert(*c < SERIALIZED_MAX_LENGTH);
+    memcpy(&serializeBuf[*c], str, n);
+    *c += n;
 }
 
 void writeBox(int *c, Box *box) {
@@ -69,7 +75,7 @@ const char* Parts2JSON(Part *parts, int numParts) {
     }
     write(&c, "]}");
 
-    return jsonBuf;
+    return serializeBuf;
 }
 
 #define MAX_JSON_TOKENS 2048
@@ -146,6 +152,7 @@ Vector2 expectVector2(JSONParser *p) {
     return res;
 }
 
+// Loads the old JSON format. Which was massive, and actually a huge mistake. Yay!
 void loadJSON(const char *json, Part *parts, int *numParts) {
     JSONParser p = parseJSON(json);
 
@@ -202,36 +209,214 @@ void loadJSON(const char *json, Part *parts, int *numParts) {
     }
 }
 
-EM_JS(void, SaveJSONWIP, (const char *jsonPtr), {
-    const json = UTF8ToString(jsonPtr);
-    window.localStorage.setItem('saved', json);
+enum : int {
+    V_Initial = 1,
+    // Add more versions here whenever the file format changes
+
+    // Don't remove this
+    _V_LatestPlusOne
+};
+
+#define V_LATEST (_V_LatestPlusOne - 1)
+
+#define ADD(_t, _fieldAdded, _field) \
+    if (s->DataVersion >= (_fieldAdded)) { \
+        serialize_##_t(s, (_field)); \
+    }
+
+typedef struct serializer {
+    char *Data;
+    int DataVersion;
+    bool IsWriting;
+    int C;
+} serializer;
+
+void swriteN(serializer *s, const void *src, int n) {
+    assert(s->C < SERIALIZED_MAX_LENGTH);
+    memcpy(&s->Data[s->C], src, n);
+    s->C += n;
+}
+
+void swrite(serializer *s, const char *str) {
+    swriteN(s, str, strlen(str) + 1);
+}
+
+void sreadN(serializer *s, void *dst, int n) {
+    memcpy(dst, &s->Data[s->C], n);
+    s->C += n;
+}
+
+void sread(serializer *s, char *dst) {
+    sreadN(s, dst, strlen(&s->Data[s->C]) + 1);
+}
+
+void serialize_int(serializer *s, int *value) {
+    if (s->IsWriting) {
+        swriteN(s, value, sizeof(int));
+    } else {
+        sreadN(s, value, sizeof(int));
+    }
+}
+
+void serialize_float(serializer *s, float *value) {
+    if (s->IsWriting) {
+        swriteN(s, value, sizeof(float));
+    } else {
+        sreadN(s, value, sizeof(float));
+    }
+}
+
+void serialize_str(serializer *s, char *value) {
+    if (s->IsWriting) {
+        swrite(s, value);
+    } else {
+        sread(s, value);
+    }
+}
+
+void serialize_Vector2(serializer *s, Vector2 *value) {
+    serialize_float(s, &value->x);
+    serialize_float(s, &value->y);
+}
+
+void serialize_RobotMaterial(serializer *s, RobotMaterial *value) {
+    serialize_int(s, (int *)value);
+}
+
+void serialize_Box(serializer *s, Box *box) {
+    ADD(Vector2, V_Initial, &box->Position);
+    ADD(float, V_Initial, &box->Angle);
+    ADD(float, V_Initial, &box->Width);
+    ADD(float, V_Initial, &box->Height);
+    ADD(float, V_Initial, &box->Depth);
+    ADD(float, V_Initial, &box->WallThickness);
+    ADD(int, V_Initial, &box->Quantity);
+    ADD(RobotMaterial, V_Initial, &box->Material);
+    ADD(float, V_Initial, &box->HardcodedMass);
+}
+
+void serialize_Part(serializer *s, Part *part) {
+    ADD(int, V_Initial, &part->Depth);
+    ADD(str, V_Initial, part->Name);
+    ADD(Vector2, V_Initial, &part->Position);
+    ADD(float, V_Initial, &part->Angle);
+    ADD(Vector2, V_Initial, &part->AttachmentPoint);
+
+    ADD(int, V_Initial, &part->NumBoxes);
+    printf("Part %s has %d boxes.\n", part->Name, part->NumBoxes);
+    for (int b = 0; b < part->NumBoxes; b++) {
+        serialize_Box(s, &part->Boxes[b]);
+    }
+}
+
+void serialize_Parts(serializer *s, Part *parts, int *numParts) {
+    ADD(int, V_Initial, numParts);
+    printf("There are %d parts.\n", *numParts);
+
+    for (int i = 0; i < *numParts; i++) {
+        serialize_Part(s, &parts[i]);
+    }
+}
+
+void serializeAll(serializer *s, Part *parts, int *numParts) {
+    if (s->IsWriting) {
+        s->DataVersion = V_LATEST;
+    }
+
+    serialize_int(s, &s->DataVersion);
+    assert(s->DataVersion <= V_LATEST); // ensure we are not old code reading a new file
+    
+    serialize_Parts(s, parts, numParts);
+}
+
+Serialized Serialize(Part *parts, int numParts) {
+    serializer s = {
+        .Data = serializeBuf,
+        .IsWriting = true,
+    };
+    serializeAll(&s, parts, &numParts);
+
+    return (Serialized) {
+        .Data = s.Data,
+        .Len = s.C,
+    };
+}
+
+void loadBinary(const char *data, Part *parts, int *numParts) {
+    serializer s = {
+        .Data = data,
+        .IsWriting = false,
+    };
+    serializeAll(&s, parts, numParts);
+}
+
+void loadSerialized(const char *data, Part *parts, int *numParts) {
+    if (!data) {
+        return;
+    }
+
+    if (data[0] == '{') {
+        // Load the old JSON format
+        loadJSON(data, parts, numParts);
+    } else {
+        // Load the new binary format
+        loadBinary(data, parts, numParts);
+    }
+}
+
+EM_JS(void, saveWIP, (const char *dataPtr, int len), {
+    const b64 = base64EncArr(Module.HEAPU8.subarray(dataPtr, dataPtr + len));
+    window.localStorage.setItem('saved', b64);
 });
+
+void SaveWIP(Serialized data) {
+    saveWIP(data.Data, data.Len);
+}
 
 EM_JS(bool, HasWIP, (), {
-    return window.localStorage.getItem('saved') !== null;
+    return !!window.localStorage.getItem('saved');
 });
 
-EM_JS(char *, getWIPJSON, (), {
-    return allocateUTF8(window.localStorage.getItem('saved'));
+EM_JS(char *, getWIPData, (), {
+    const data = window.localStorage.getItem('saved');
+    if (!data) {
+        throw new Error('No WIP data was saved');
+    }
+
+    // original JSON format
+    if (data[0] == '{') {
+        return allocateUTF8(data);
+    }
+
+    // new binary format
+    const wipDataArray = base64DecToArr(data);
+    const buf = Module._malloc(wipDataArray.length * wipDataArray.BYTES_PER_ELEMENT);
+    Module.HEAPU8.set(wipDataArray, buf);
+    return buf;
 });
 
 void LoadWIP(Part *parts, int *numParts) {
     assert(HasWIP());
-    char *json = getWIPJSON();
-    loadJSON(json, parts, numParts);
-    free(json);
+    char *data = getWIPData();
+    loadSerialized(data, parts, numParts);
+    free(data);
 }
 
 EM_JS(void, ClearWIP, (), {
     window.localStorage.removeItem('saved');
 });
 
-EM_JS(void, SaveJSONQuery, (const char *jsonPtr), {
+EM_JS(void, saveQuery, (const char *dataPtr, int len), {
+    const b64 = base64EncArr(Module.HEAPU8.subarray(dataPtr, dataPtr + len));
     const searchParams = new URLSearchParams(window.location.search);
-    searchParams.set('robot', btoa(UTF8ToString(jsonPtr)));
+    searchParams.set('robot', b64);
     const path = window.location.pathname + '?' + searchParams.toString();
     window.history.pushState(null, '', path);
 });
+
+void SaveQuery(Serialized data) {
+    saveQuery(data.Data, data.Len);
+}
 
 EM_JS(bool, HasQuery, (), {
     return new URLSearchParams(window.location.search).has('robot');

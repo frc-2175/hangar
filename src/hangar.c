@@ -106,9 +106,10 @@ int main(void)
     attachmentPart = &parts[1];
 
     if (HasQuery()) {
-        LoadQuery(parts, &numParts);
-        ClearQuery();
-        ClearWIP();
+        // TODO: Put this back
+        // LoadQuery(parts, &numParts);
+        // ClearQuery();
+        // ClearWIP();
     } else if (HasWIP()) {
         LoadWIP(parts, &numParts);
     }
@@ -765,7 +766,7 @@ static void UpdateDrawFrame(void)
         );
 
         if (GuiButton((Rectangle){ screenWidth - 20 - 100, screenHeight - 20 - 20, 100, 20 }, "Share")) {
-            SaveJSONQuery(Parts2JSON(parts, numParts));
+            SaveQuery(Serialize(parts, numParts));
         }
     }
     EndDrawing();
@@ -774,5 +775,5 @@ static void UpdateDrawFrame(void)
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         ClearQuery();
     }
-    SaveJSONWIP(Parts2JSON(parts, numParts));
+    SaveWIP(Serialize(parts, numParts));
 }

@@ -2,14 +2,20 @@
 
 #include "cad.h"
 
-const char* Parts2JSON(Part *parts, int numParts);
+typedef struct Serialized {
+    const char *Data;
+    int Len;
+} Serialized;
 
-void SaveJSONWIP(const char *json);
+const char *Parts2JSON(Part *parts, int numParts);
+Serialized Serialize(Part *parts, int numParts);
+
+void SaveWIP(Serialized data);
 bool HasWIP();
 void LoadWIP(Part *parts, int *numParts);
 void ClearWIP();
 
-void SaveJSONQuery(const char *json);
+void SaveQuery(Serialized data);
 bool HasQuery();
 void LoadQuery(Part *parts, int *numParts);
 void ClearQuery();
